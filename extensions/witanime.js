@@ -1,6 +1,6 @@
 // ==YomiruExtension==
 // @name         WitAnime
-// @version      v1.0.3
+// @version      v1.0.4
 // @author       Yomiru
 // @lang         ar
 // @license      MIT
@@ -623,6 +623,43 @@ export default class extends Extension {
     return urls;
   }
 
+  async extractSoraplay(embedUrl) {
+    if (!embedUrl) return null;
+    try {
+      const res = await this.request(embedUrl, {
+        headers: {
+          Referer: embedUrl,
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+        },
+      });
+      const html =
+        typeof res === "string"
+          ? res
+          : res && res.body
+          ? res.body
+          : JSON.stringify(res);
+      const unpacked = this.unpack(html);
+      const searchIn = unpacked + " " + html;
+
+      const direct = this.findDirectMediaUrls(searchIn);
+      if (direct.length > 0) {
+        const u = direct[0];
+        return {
+          url: u,
+          type: u.indexOf(".m3u8") !== -1 ? "hls" : "mp4",
+          isDirectVideo: true,
+          headers: {
+            Referer: embedUrl,
+            "User-Agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+          },
+        };
+      }
+    } catch (e) {}
+    return null;
+  }
+
   async extractOkRu(embedUrl) {
     if (!embedUrl) return null;
     try {
@@ -680,9 +717,15 @@ export default class extends Extension {
     return null;
   }
 
-  async extractMp4Upload(embedUrl) {
-    if (!embedUrl) return null;
+  async extractMp4Upload(rawUrl) {
+    if (!rawUrl) return null;
     try {
+      let embedUrl = rawUrl;
+      const idMatch = rawUrl.match(/mp4upload\.com\/(?:embed-)?([a-zA-Z0-9_-]+)(?:\.html)?/i);
+      if (idMatch && idMatch[1]) {
+        embedUrl = "https://www.mp4upload.com/embed-" + idMatch[1] + ".html";
+      }
+
       const res = await this.request(embedUrl, {
         headers: {
           "User-Agent":
@@ -699,9 +742,10 @@ export default class extends Extension {
       const unpacked = this.unpack(html);
       const searchIn = unpacked + " " + html;
       const srcMatch =
-        searchIn.match(/player\.src\(["'](https?:[^"']+\.mp4[^"']*)["']\)/i) ||
+        searchIn.match(/player\.src\(\s*(?:\{\s*src\s*:\s*)?["'](https?:[^"']+\.mp4[^"']*)["']/i) ||
         searchIn.match(/src:\s*["'](https?:[^"']+\.mp4[^"']*)["']/i) ||
-        searchIn.match(/https?:\/\/[^"'\s<>]+\.mp4(?:\?[^"'\s<>]*)?/i);
+        searchIn.match(/https?:\/\/[a-zA-Z0-9_.:-]+\.mp4upload\.com:[0-9]+\/d\/[^\s"'<>]+\/video\.mp4/i) ||
+        searchIn.match(/https?:\/\/[^\s"'<>]+\.mp4(?:\?[^\s"'<>]*)?/i);
       if (srcMatch) {
         const videoUrl = srcMatch[1] || srcMatch[0];
         if (
@@ -742,14 +786,32 @@ export default class extends Extension {
           ? res.body
           : JSON.stringify(res);
       const unpacked = this.unpack(html);
-      const direct = this.findDirectMediaUrls(unpacked + " " + html);
+      const searchIn = unpacked + " " + html;
+
+      const ogMatch =
+        searchIn.match(/property=["']og:video["']\s+content=["'](https?:[^"']+)["']/i) ||
+        searchIn.match(/content=["'](https?:[^"']+)["']\s+property=["']og:video["']/i);
+      if (ogMatch && ogMatch[1] && ogMatch[1].indexOf(".mp4") !== -1) {
+        return {
+          url: ogMatch[1],
+          type: "mp4",
+          isDirectVideo: true,
+          headers: {
+            Referer: embedUrl,
+            "User-Agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+          },
+        };
+      }
+
+      const direct = this.findDirectMediaUrls(searchIn);
       if (direct.length > 0) {
         return {
           url: direct[0],
           type: "mp4",
           isDirectVideo: true,
           headers: {
-            Referer: "https://www.yourupload.com/",
+            Referer: embedUrl,
             "User-Agent":
               "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
           },
@@ -854,6 +916,7 @@ export default class extends Extension {
           : res && res.body
           ? res.body
           : JSON.stringify(res);
+
       const formMatch = html.match(
         /<form[^>]+action=["']([^"']+)["'][^>]*>([\s\S]*?)<\/form>/i
       );
@@ -876,10 +939,38 @@ export default class extends Extension {
               );
           }
         }
-        const videoUri =
-          action + (action.indexOf("?") === -1 ? "?" : "&") + params.join("&");
+        if (params.length > 0) {
+          const videoUri =
+            action + (action.indexOf("?") === -1 ? "?" : "&") + params.join("&");
+          return {
+            url: videoUri,
+            type: "mp4",
+            isDirectVideo: true,
+            headers: {
+              "User-Agent":
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+            },
+          };
+        }
+      }
+
+      const confirmMatch =
+        html.match(/[?&]confirm=([a-zA-Z0-9_-]+)/) ||
+        html.match(/name=["']confirm["'][^>]+value=["']([^"']+)["']/i);
+      const uuidMatch =
+        html.match(/[?&]uuid=([a-zA-Z0-9_-]+)/) ||
+        html.match(/name=["']uuid["'][^>]+value=["']([^"']+)["']/i);
+      if (confirmMatch && confirmMatch[1]) {
+        let directUrl =
+          "https://drive.usercontent.google.com/download?id=" +
+          fileId +
+          "&export=download&confirm=" +
+          confirmMatch[1];
+        if (uuidMatch && uuidMatch[1]) {
+          directUrl += "&uuid=" + uuidMatch[1];
+        }
         return {
-          url: videoUri,
+          url: directUrl,
           type: "mp4",
           isDirectVideo: true,
           headers: {
@@ -979,7 +1070,10 @@ export default class extends Extension {
       lower.indexOf("4shared.com") !== -1 ||
       lower.indexOf("uptobox.com") !== -1 ||
       lower.indexOf("mediafire.com") !== -1 ||
-      lower.indexOf("1fichier.com") !== -1
+      lower.indexOf("1fichier.com") !== -1 ||
+      lower.indexOf("videa.hu") !== -1 ||
+      lower.indexOf("workupload.com") !== -1 ||
+      lower.indexOf("gofile.io") !== -1
     ) {
       return null;
     }
@@ -1011,11 +1105,20 @@ export default class extends Extension {
       };
     }
 
-    if (lower.indexOf("ok.ru") !== -1 || lower.indexOf("odnoklassniki") !== -1) {
-      return await this.extractOkRu(streamUrl);
+    if (lower.indexOf("soraplay") !== -1) {
+      return await this.extractSoraplay(streamUrl);
+    }
+    if (
+      lower.indexOf("drive.google.com") !== -1 ||
+      lower.indexOf("docs.google.com") !== -1
+    ) {
+      return await this.extractGoogleDrive(streamUrl);
     }
     if (lower.indexOf("mp4upload") !== -1) {
       return await this.extractMp4Upload(streamUrl);
+    }
+    if (lower.indexOf("ok.ru") !== -1 || lower.indexOf("odnoklassniki") !== -1) {
+      return await this.extractOkRu(streamUrl);
     }
     if (lower.indexOf("yourupload") !== -1 || lower.indexOf("yupoo") !== -1) {
       return await this.extractYourUpload(streamUrl);
@@ -1029,12 +1132,6 @@ export default class extends Extension {
     }
     if (lower.indexOf("filemoon") !== -1) {
       return await this.extractFilemoon(streamUrl);
-    }
-    if (
-      lower.indexOf("drive.google.com") !== -1 ||
-      lower.indexOf("docs.google.com") !== -1
-    ) {
-      return await this.extractGoogleDrive(streamUrl);
     }
 
     // Generic sniffer
@@ -1163,41 +1260,39 @@ export default class extends Extension {
 
     const isPlayableServer = (label) => {
       const l = (label || "").toLowerCase();
-      if (
-        l.indexOf("mega") !== -1 ||
-        l.indexOf("4shared") !== -1 ||
-        l.indexOf("uptobox") !== -1 ||
-        l.indexOf("mediafire") !== -1 ||
-        l.indexOf("1fichier") !== -1 ||
-        l.indexOf("turbobit") !== -1
-      ) {
-        return false;
-      }
-      return true;
+      return (
+        l.indexOf("soraplay") !== -1 ||
+        l.indexOf("google") !== -1 ||
+        l.indexOf("gdrive") !== -1 ||
+        l.indexOf("mp4upload") !== -1 ||
+        l.indexOf("ok") !== -1 ||
+        l.indexOf("yourupload") !== -1 ||
+        l.indexOf("streamwish") !== -1 ||
+        l.indexOf("awish") !== -1 ||
+        l.indexOf("filemoon") !== -1 ||
+        l.indexOf("yonaplay") !== -1
+      );
     };
 
     // Priority rankings for streaming hosts
     const getServerPriority = (label) => {
       const l = (label || "").toLowerCase();
-      if (l.indexOf("ok") !== -1) return 1;
-      if (l.indexOf("mp4upload") !== -1) return 2;
-      if (l.indexOf("yourupload") !== -1) return 3;
-      if (l.indexOf("streamwish") !== -1) return 4;
-      if (l.indexOf("filemoon") !== -1) return 5;
-      if (l.indexOf("videa") !== -1) return 6;
-      if (l.indexOf("yonaplay") !== -1) return 7;
-      if (l.indexOf("hgcloud") !== -1 || l.indexOf("dhcplay") !== -1) return 8;
-      if (l.indexOf("gdrive") !== -1 || l.indexOf("google") !== -1) return 9;
-      return 10;
+      if (l.indexOf("soraplay") !== -1) return 1;
+      if (l.indexOf("google") !== -1 || l.indexOf("gdrive") !== -1) return 2;
+      if (l.indexOf("mp4upload") !== -1) return 3;
+      if (l.indexOf("ok") !== -1) return 4;
+      if (l.indexOf("yourupload") !== -1) return 5;
+      if (l.indexOf("streamwish") !== -1 || l.indexOf("awish") !== -1) return 6;
+      if (l.indexOf("filemoon") !== -1) return 7;
+      if (l.indexOf("yonaplay") !== -1) return 8;
+      return 20;
     };
 
     // Collect server candidates across all qualities
     const candidates = [];
-    const qualities = Object.keys(players);
-    if (qualities.length === 0) {
-      qualities.push("FHD", "HD", "SD");
-    }
+    const qualities = ["FHD", "HD", "SD"];
 
+    // 1. Collect from players
     for (let qi = 0; qi < qualities.length; qi++) {
       const q = qualities[qi];
       const serverList = players[q] || [];
@@ -1210,13 +1305,43 @@ export default class extends Extension {
         if (!isPlayableServer(rawLabel)) continue;
 
         const pPriority = getServerPriority(rawLabel);
-        const qWeight = q === "FHD" ? 0 : q === "HD" ? 20 : 40;
+        const qWeight = q === "FHD" ? 0 : q === "HD" ? 10 : 20;
 
         candidates.push({
           quality: q,
           label: rawLabel,
           token: s.token,
+          isDownload: false,
           rank: pPriority + qWeight,
+        });
+      }
+    }
+
+    // 2. Also collect playable hosts from downloads (e.g. mp4upload FHD/HD)
+    const downloads =
+      manifest && typeof manifest === "object" && manifest.downloads
+        ? manifest.downloads
+        : {};
+    for (let qi = 0; qi < qualities.length; qi++) {
+      const q = qualities[qi];
+      const dList = downloads[q] || [];
+      if (!Array.isArray(dList)) continue;
+
+      for (let di = 0; di < dList.length; di++) {
+        const d = dList[di];
+        if (!d || !d.token) continue;
+        const rawLabel = (d.label || "Download").toString().trim();
+        if (!isPlayableServer(rawLabel)) continue;
+
+        const pPriority = getServerPriority(rawLabel);
+        const qWeight = q === "FHD" ? 0 : q === "HD" ? 10 : 20;
+
+        candidates.push({
+          quality: q,
+          label: rawLabel,
+          token: d.token,
+          isDownload: true,
+          rank: pPriority + qWeight + 5,
         });
       }
     }
@@ -1236,21 +1361,24 @@ export default class extends Extension {
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
         };
 
-        // 1. Authorize token via POST /watch/stream-source/$token
+        // 1. Authorize token via POST stream-source or download-source
+        const sourcePath = item.isDownload
+          ? "/watch/download-source/"
+          : "/watch/stream-source/";
         try {
-          await this.request(
-            this.baseUrl + "/watch/stream-source/" + item.token,
-            {
-              method: "POST",
-              data: {},
-              headers: authHeaders,
-            }
-          );
+          await this.request(this.baseUrl + sourcePath + item.token, {
+            method: "POST",
+            data: {},
+            headers: authHeaders,
+          });
         } catch (_) {}
 
-        // 2. Resolve 302 redirect location via GET /watch/stream-gate/$token
-        const gateUrl = this.baseUrl + "/watch/stream-gate/" + item.token;
-        let streamUrl = gateUrl;
+        // 2. Resolve redirect location via GET stream-gate or download-gate
+        const gatePath = item.isDownload
+          ? "/watch/download-gate/"
+          : "/watch/stream-gate/";
+        const gateUrl = this.baseUrl + gatePath + item.token;
+        let streamUrl = "";
 
         try {
           const gateRes = await this.request(gateUrl, {
@@ -1280,9 +1408,9 @@ export default class extends Extension {
               if (m) streamUrl = m[0];
             }
           }
-        } catch (_) {
-          // Fall back to gateUrl
-        }
+        } catch (_) {}
+
+        if (!streamUrl) continue;
 
         const cleanLabel = item.label || "Server";
         const lowerLabel = cleanLabel.toLowerCase();
@@ -1304,7 +1432,7 @@ export default class extends Extension {
                 sources.push(ys);
               }
             }
-            if (sources.length >= 6) break;
+            if (sources.length >= 2) break;
             continue;
           }
         }
@@ -1315,7 +1443,7 @@ export default class extends Extension {
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
         };
 
-        // 4. Attempt direct video resolution for embeds
+        // 4. Resolve direct video stream
         const direct = await this.resolveEmbedDirectStream(
           streamUrl,
           watchUrl,
@@ -1332,47 +1460,19 @@ export default class extends Extension {
               cleanLabel.toUpperCase() +
               " (" +
               item.quality +
-              " - Direct)",
+              ")",
             quality: item.quality,
             url: direct.url,
             type: isHls ? "hls" : "mp4",
             headers: direct.headers || streamHeaders,
           });
-        } else if (streamUrl && !seenStreamUrls[streamUrl]) {
-          // Robust fallback: if embed cannot be directly unpacked to raw m3u8/mp4,
-          // still provide the web embed player URL for Yomiru to play!
-          seenStreamUrls[streamUrl] = true;
-          sources.push({
-            server:
-              "WitAnime • " +
-              cleanLabel.toUpperCase() +
-              " (" +
-              item.quality +
-              ")",
-            quality: item.quality,
-            url: streamUrl,
-            type: "hls",
-            headers: streamHeaders,
-          });
         }
+
+        // Fast early exit: stop once we have 2 direct working streams
+        if (sources.length >= 2) break;
       } catch (e) {
         continue;
       }
-
-      if (sources.length >= 6) break;
-    }
-
-    // Always provide official web player as fallback at the end
-    if (!seenStreamUrls[watchUrl]) {
-      sources.push({
-        server: "WitAnime Web",
-        quality: "Web Player",
-        url: watchUrl,
-        type: "hls",
-        headers: {
-          Referer: this.baseUrl + "/",
-        },
-      });
     }
 
     return {
