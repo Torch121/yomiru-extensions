@@ -1,6 +1,6 @@
 // ==YomiruExtension==
 // @name         WitAnime
-// @version      v1.0.5
+// @version      v1.0.6
 // @author       Yomiru
 // @lang         ar
 // @license      MIT
@@ -1148,12 +1148,14 @@ export default class extends Extension {
 
   async extractYonaplay(embedUrl, defaultQuality) {
     if (!embedUrl) return [];
+    console.log("[Yonaplay] Starting Yonaplay extractor for: " + embedUrl);
     const sources = [];
     try {
       const baseMatch = embedUrl.match(/^(https?:\/\/[^\/]+)/);
       const base = baseMatch ? baseMatch[1] : "https://mid.yonaplay.net";
 
       // 0. Visit embed page first to establish PHP session & get session cookies
+      console.log("[Yonaplay] Step 0: Visiting embed page to establish cookies...");
       await this.request(embedUrl, {
         headers: {
           Referer: this.baseUrl + "/",
@@ -1163,6 +1165,7 @@ export default class extends Extension {
       });
 
       // 1. Init session
+      console.log("[Yonaplay] Step 1: Requesting session initialization from " + base + "/api/init-session.php");
       const initRes = await this.request(base + "/api/init-session.php", {
         method: "POST",
         data: {},
@@ -1175,13 +1178,24 @@ export default class extends Extension {
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
         },
       });
-      let init = typeof initRes === "string" ? JSON.parse(initRes) : initRes;
-      if (!init || !init.success || !init.c || !init.k) return [];
+      let init = null;
+      try {
+        init = typeof initRes === "string" ? JSON.parse(initRes) : initRes;
+      } catch (err) {
+        console.warn("[Yonaplay] Failed to parse init-session response: " + err);
+        return [];
+      }
+      if (!init || !init.success || !init.c || !init.k) {
+        console.warn("[Yonaplay] init-session returned unsuccessful: " + JSON.stringify(init));
+        return [];
+      }
 
       const code = init.c;
       const pageKey = init.k;
+      console.log("[Yonaplay] Session initialized successfully. Code: " + code);
 
       // 2. Fetch sources list
+      console.log("[Yonaplay] Step 2: Requesting server list from " + base + "/api/sources.php");
       const sourcesRes = await this.request(base + "/api/sources.php", {
         method: "POST",
         data: { code: code },
@@ -1194,34 +1208,64 @@ export default class extends Extension {
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
         },
       });
-      let sData = typeof sourcesRes === "string" ? JSON.parse(sourcesRes) : sourcesRes;
-      if (!sData || !sData.success || !sData.qualities) return [];
+      let sData = null;
+      try {
+        sData = typeof sourcesRes === "string" ? JSON.parse(sourcesRes) : sourcesRes;
+      } catch (err) {
+        console.warn("[Yonaplay] Failed to parse sources.php response: " + err);
+        return [];
+      }
+      if (!sData || !sData.success || !sData.qualities) {
+        console.warn("[Yonaplay] sources.php returned unsuccessful: " + JSON.stringify(sData));
+        return [];
+      }
+
+      const cryptoObj =
+        typeof CryptoJS !== "undefined"
+          ? CryptoJS
+          : typeof globalThis !== "undefined" && globalThis.CryptoJS
+          ? globalThis.CryptoJS
+          : typeof window !== "undefined" && window.CryptoJS
+          ? window.CryptoJS
+          : null;
+
+      if (!cryptoObj) {
+        console.error("[Yonaplay] CryptoJS is unavailable in global scope! Cannot decrypt streams.");
+        return [];
+      }
 
       const decryptAES = (b64Data, keyStr) => {
-        if (typeof CryptoJS === "undefined") return "";
-        const keyWords = CryptoJS.SHA256(CryptoJS.enc.Utf8.parse(keyStr));
-        const raw = CryptoJS.enc.Base64.parse(b64Data);
-        const j1Words = CryptoJS.lib.WordArray.create(raw.words.slice(0, 3).concat([2]), 16);
-        const ctWords = CryptoJS.lib.WordArray.create(raw.words.slice(7), raw.sigBytes - 28);
-        const dec = CryptoJS.AES.encrypt(ctWords, keyWords, {
-          iv: j1Words,
-          mode: CryptoJS.mode.CTR,
-          padding: CryptoJS.pad.NoPadding,
-        });
-        return dec.ciphertext.toString(CryptoJS.enc.Utf8);
+        try {
+          const keyWords = cryptoObj.SHA256(cryptoObj.enc.Utf8.parse(keyStr));
+          const raw = cryptoObj.enc.Base64.parse(b64Data);
+          const j1Words = cryptoObj.lib.WordArray.create(raw.words.slice(0, 3).concat([2]), 16);
+          const ctWords = cryptoObj.lib.WordArray.create(raw.words.slice(7), raw.sigBytes - 28);
+          const dec = cryptoObj.AES.encrypt(ctWords, keyWords, {
+            iv: j1Words,
+            mode: cryptoObj.mode.CTR,
+            padding: cryptoObj.pad.NoPadding,
+          });
+          return dec.ciphertext.toString(cryptoObj.enc.Utf8);
+        } catch (e) {
+          console.warn("[Yonaplay] AES decryption error: " + e);
+          return "";
+        }
       };
 
-      const qKeys = ["4k", "fhd", "hd", "sd"];
+      const qKeys = ["fhd", "hd", "sd"];
       for (let qi = 0; qi < qKeys.length; qi++) {
         const qKey = qKeys[qi];
         const qGroup = sData.qualities[qKey];
-        if (!qGroup || !Array.isArray(qGroup.servers)) continue;
+        if (!qGroup || !Array.isArray(qGroup.servers) || qGroup.servers.length === 0) continue;
+
+        console.log("[Yonaplay] Evaluating " + qGroup.servers.length + " server(s) for quality " + qKey.toUpperCase());
 
         for (let si = 0; si < qGroup.servers.length; si++) {
           const srv = qGroup.servers[si];
           if (!srv || !srv.token) continue;
 
           try {
+            console.log("[Yonaplay] Requesting token decryption for server: " + (srv.name || "SERVER") + " (" + qKey.toUpperCase() + ")");
             const apiRes = await this.request(base + "/api/api.php", {
               method: "POST",
               data: { code: code, token: srv.token, key: pageKey },
@@ -1234,15 +1278,23 @@ export default class extends Extension {
                   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
               },
             });
-            let apiData = typeof apiRes === "string" ? JSON.parse(apiRes) : apiRes;
+            let apiData = null;
+            try {
+              apiData = typeof apiRes === "string" ? JSON.parse(apiRes) : apiRes;
+            } catch (err) {
+              continue;
+            }
             if (!apiData || !apiData.success || !apiData.d) continue;
 
             const decryptedUrl = decryptAES(apiData.d, pageKey);
             if (!decryptedUrl || decryptedUrl.indexOf("http") !== 0) continue;
 
+            console.log("[Yonaplay] Decrypted URL: " + decryptedUrl);
+
             if (decryptedUrl.indexOf("dotplay.net") !== -1) {
               const dotDirect = await this.extractDotplay(decryptedUrl);
               if (dotDirect && dotDirect.url) {
+                console.log("[Yonaplay] Successfully extracted Dotplay direct stream: " + dotDirect.url);
                 sources.push({
                   server:
                     "WitAnime • " +
@@ -1260,6 +1312,7 @@ export default class extends Extension {
                       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
                   },
                 });
+                if (sources.length >= 2) break;
               }
             } else {
               const subSource = await this.resolveEmbedDirectStream(
@@ -1267,6 +1320,7 @@ export default class extends Extension {
                 embedUrl
               );
               if (subSource && subSource.url) {
+                console.log("[Yonaplay] Successfully extracted direct stream from decrypted embed: " + subSource.url);
                 sources.push({
                   server:
                     "WitAnime • " +
@@ -1284,12 +1338,19 @@ export default class extends Extension {
                       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
                   },
                 });
+                if (sources.length >= 2) break;
               }
             }
-          } catch (_) {}
+          } catch (e) {
+            console.warn("[Yonaplay] Error processing server " + srv.name + ": " + e);
+          }
         }
+        if (sources.length >= 2) break;
       }
-    } catch (_) {}
+    } catch (e) {
+      console.error("[Yonaplay] Extractor exception: " + e);
+    }
+    console.log("[Yonaplay] Extractor finished. Found " + sources.length + " source(s).");
     return sources;
   }
 
@@ -1424,6 +1485,8 @@ export default class extends Extension {
       }
     }
 
+    console.log("[WitAnime] Starting watch for episode URL: " + watchUrl);
+
     const res = await this.request(watchUrl, {
       headers: {
         Referer: this.baseUrl + "/",
@@ -1438,6 +1501,14 @@ export default class extends Extension {
         ? res.body
         : JSON.stringify(res);
 
+    if (html && (html.indexOf("429") !== -1 || html.indexOf("طلبات كثيرة جدًا") !== -1)) {
+      console.error("[WitAnime] RATE LIMITED (HTTP 429)! WitAnime origin server is throttling requests from this IP. Please wait a moment before trying again.");
+      return {
+        sources: [],
+        error: "WitAnime is temporarily rate-limiting requests (HTTP 429). Please wait 1-2 minutes and try again."
+      };
+    }
+
     // 1. Extract CSRF token
     let csrfMatch = html.match(
       /<meta\s+name=["']csrf-token["']\s+content=["']([^"']+)["']/i
@@ -1445,6 +1516,7 @@ export default class extends Extension {
     let csrfToken = csrfMatch ? csrfMatch[1] : "";
 
     if (!csrfToken) {
+      console.log("[WitAnime] CSRF token not found in watch page, requesting homepage fallback...");
       try {
         const homeRes = await this.request(this.baseUrl, {
           headers: { Referer: this.baseUrl + "/" },
@@ -1459,8 +1531,12 @@ export default class extends Extension {
           /<meta\s+name=["']csrf-token["']\s+content=["']([^"']+)["']/i
         );
         csrfToken = csrfMatch ? csrfMatch[1] : "";
-      } catch (err) {}
+      } catch (err) {
+        console.warn("[WitAnime] Homepage CSRF fallback error: " + err);
+      }
     }
+
+    console.log("[WitAnime] CSRF token: " + (csrfToken ? csrfToken.substring(0, 8) + "..." : "NOT FOUND"));
 
     // 2. Extract sourcesUrl
     const sourcesUrlMatch = html.match(/sourcesUrl:\s*["']([^"']+)["']/i);
@@ -1473,6 +1549,8 @@ export default class extends Extension {
         : this.baseUrl +
           (sourcesPath.indexOf("/") === 0 ? "" : "/") +
           sourcesPath;
+
+    console.log("[WitAnime] Requesting sources manifest from: " + fullSourcesUrl);
 
     let manifest = await this.request(fullSourcesUrl, {
       method: "POST",
@@ -1492,25 +1570,27 @@ export default class extends Extension {
       try {
         manifest = JSON.parse(manifest);
       } catch (e) {
+        console.warn("[WitAnime] Failed to parse manifest JSON: " + manifest.substring(0, 100));
         manifest = {};
       }
     }
 
-    const sources = [];
-    const seenStreamUrls = {};
     const players =
       manifest && typeof manifest === "object" && manifest.players
         ? manifest.players
         : {};
 
+    const availablePlayerQualities = Object.keys(players);
+    console.log("[WitAnime] Manifest received. Available player qualities: " + availablePlayerQualities.join(", "));
+
     const isPlayableServer = (label) => {
       const l = (label || "").toLowerCase();
       return (
-        l.indexOf("ok") !== -1 ||
-        l.indexOf("odnoklassniki") !== -1 ||
         l.indexOf("google") !== -1 ||
         l.indexOf("gdrive") !== -1 ||
         l.indexOf("drive") !== -1 ||
+        l.indexOf("ok") !== -1 ||
+        l.indexOf("odnoklassniki") !== -1 ||
         l.indexOf("yonaplay") !== -1 ||
         l.indexOf("dotplay") !== -1 ||
         l.indexOf("mail") !== -1 ||
@@ -1524,31 +1604,30 @@ export default class extends Extension {
       );
     };
 
-    // Priority rankings for streaming hosts
+    // Priority rankings: Google Drive > OK.ru > Yonaplay/Dotplay > Mail.ru > Soraplay > others
     const getServerPriority = (label) => {
       const l = (label || "").toLowerCase();
-      if (l.indexOf("ok") !== -1 || l.indexOf("odnoklassniki") !== -1) return 1;
-      if (l.indexOf("google") !== -1 || l.indexOf("gdrive") !== -1 || l.indexOf("drive") !== -1) return 2;
+      if (l.indexOf("google") !== -1 || l.indexOf("gdrive") !== -1 || l.indexOf("drive") !== -1) return 1;
+      if (l.indexOf("ok") !== -1 || l.indexOf("odnoklassniki") !== -1) return 2;
       if (l.indexOf("yonaplay") !== -1 || l.indexOf("dotplay") !== -1) return 3;
       if (l.indexOf("mail") !== -1) return 4;
-      if (l.indexOf("mp4upload") !== -1) return 5;
-      if (l.indexOf("yourupload") !== -1) return 6;
-      if (l.indexOf("soraplay") !== -1) return 7;
+      if (l.indexOf("soraplay") !== -1) return 5;
+      if (l.indexOf("mp4upload") !== -1) return 6;
+      if (l.indexOf("yourupload") !== -1) return 7;
       if (l.indexOf("hgcloud") !== -1) return 8;
       if (l.indexOf("streamwish") !== -1 || l.indexOf("awish") !== -1) return 9;
       if (l.indexOf("filemoon") !== -1) return 10;
       return 20;
     };
 
-    // Collect server candidates across all qualities
+    // Prioritize FHD servers first. Only fall back to HD/SD if FHD is empty.
     const candidates = [];
-    const qualities = ["FHD", "HD", "SD"];
+    const qualitiesToInspect = ["FHD", "HD", "SD"];
 
-    // 1. Collect from players
-    for (let qi = 0; qi < qualities.length; qi++) {
-      const q = qualities[qi];
+    for (let qi = 0; qi < qualitiesToInspect.length; qi++) {
+      const q = qualitiesToInspect[qi];
       const serverList = players[q] || [];
-      if (!Array.isArray(serverList)) continue;
+      if (!Array.isArray(serverList) || serverList.length === 0) continue;
 
       for (let si = 0; si < serverList.length; si++) {
         const s = serverList[si];
@@ -1556,52 +1635,79 @@ export default class extends Extension {
         const rawLabel = (s.label || "Server").toString().trim();
         if (!isPlayableServer(rawLabel)) continue;
 
-        const pPriority = getServerPriority(rawLabel);
-        const qWeight = q === "FHD" ? 0 : q === "HD" ? 10 : 20;
-
         candidates.push({
           quality: q,
           label: rawLabel,
           token: s.token,
           isDownload: false,
-          rank: pPriority + qWeight,
+          rank: getServerPriority(rawLabel) + (q === "FHD" ? 0 : q === "HD" ? 10 : 20),
         });
+      }
+
+      // If we found playable candidates in FHD, do NOT queue HD and SD to prevent bursting the server
+      if (candidates.length > 0) {
+        break;
       }
     }
 
-    // 2. Also collect playable hosts from downloads (e.g. mp4upload FHD/HD)
-    const downloads =
-      manifest && typeof manifest === "object" && manifest.downloads
-        ? manifest.downloads
-        : {};
-    for (let qi = 0; qi < qualities.length; qi++) {
-      const q = qualities[qi];
-      const dList = downloads[q] || [];
-      if (!Array.isArray(dList)) continue;
+    // Fallback: If players had zero servers, check downloads (e.g. mp4upload)
+    if (candidates.length === 0) {
+      console.log("[WitAnime] No player servers found, checking downloads manifest...");
+      const downloads =
+        manifest && typeof manifest === "object" && manifest.downloads
+          ? manifest.downloads
+          : {};
+      for (let qi = 0; qi < qualitiesToInspect.length; qi++) {
+        const q = qualitiesToInspect[qi];
+        const dList = downloads[q] || [];
+        if (!Array.isArray(dList) || dList.length === 0) continue;
 
-      for (let di = 0; di < dList.length; di++) {
-        const d = dList[di];
-        if (!d || !d.token) continue;
-        const rawLabel = (d.label || "Download").toString().trim();
-        if (!isPlayableServer(rawLabel)) continue;
+        for (let di = 0; di < dList.length; di++) {
+          const d = dList[di];
+          if (!d || !d.token) continue;
+          const rawLabel = (d.label || "Download").toString().trim();
+          if (!isPlayableServer(rawLabel)) continue;
 
-        const pPriority = getServerPriority(rawLabel);
-        const qWeight = q === "FHD" ? 0 : q === "HD" ? 10 : 20;
-
-        candidates.push({
-          quality: q,
-          label: rawLabel,
-          token: d.token,
-          isDownload: true,
-          rank: pPriority + qWeight + 5,
-        });
+          candidates.push({
+            quality: q,
+            label: rawLabel,
+            token: d.token,
+            isDownload: true,
+            rank: getServerPriority(rawLabel) + 15,
+          });
+        }
+        if (candidates.length > 0) break;
       }
     }
 
     candidates.sort((a, b) => a.rank - b.rank);
 
-    for (let ci = 0; ci < candidates.length; ci++) {
-      const item = candidates[ci];
+    // Limit to testing at most 3 top servers to completely prevent rate limiting
+    const candidatesToTry = candidates.slice(0, 3);
+    console.log(
+      "[WitAnime] Candidate selection complete. Testing " +
+        candidatesToTry.length +
+        " prioritized server(s): " +
+        candidatesToTry.map((c) => c.label + " (" + c.quality + ")").join(", ")
+    );
+
+    const sources = [];
+    const seenStreamUrls = {};
+
+    for (let ci = 0; ci < candidatesToTry.length; ci++) {
+      const item = candidatesToTry[ci];
+      console.log(
+        "[WitAnime] [" +
+          (ci + 1) +
+          "/" +
+          candidatesToTry.length +
+          "] Testing: " +
+          item.label +
+          " (" +
+          item.quality +
+          ")"
+      );
+
       try {
         const authHeaders = {
           "Content-Type": "application/json",
@@ -1618,6 +1724,7 @@ export default class extends Extension {
           ? "/watch/download-source/"
           : "/watch/stream-source/";
         try {
+          console.log("[WitAnime] Authorizing source token for " + item.label + "...");
           await this.request(this.baseUrl + sourcePath + item.token, {
             method: "POST",
             data: {},
@@ -1630,6 +1737,7 @@ export default class extends Extension {
           ? "/watch/download-gate/"
           : "/watch/stream-gate/";
         const gateUrl = this.baseUrl + gatePath + item.token;
+        console.log("[WitAnime] Resolving gate redirect from: " + gateUrl);
         let streamUrl = "";
 
         try {
@@ -1668,9 +1776,16 @@ export default class extends Extension {
               }
             }
           }
-        } catch (_) {}
+        } catch (e) {
+          console.warn("[WitAnime] Gate request failed: " + e);
+        }
 
-        if (!streamUrl) continue;
+        if (!streamUrl) {
+          console.warn("[WitAnime] Gate did not return a valid stream redirect for " + item.label);
+          continue;
+        }
+
+        console.log("[WitAnime] Gate redirected to: " + streamUrl);
 
         const cleanLabel = item.label || "Server";
         const lowerLabel = cleanLabel.toLowerCase();
@@ -1680,6 +1795,7 @@ export default class extends Extension {
           lowerLabel.indexOf("yonaplay") !== -1 ||
           streamUrl.indexOf("yonaplay") !== -1
         ) {
+          console.log("[WitAnime] Unpacking Yonaplay embed container...");
           const yonaSources = await this.extractYonaplay(
             streamUrl,
             item.quality
@@ -1690,9 +1806,13 @@ export default class extends Extension {
               if (ys && ys.url && !seenStreamUrls[ys.url]) {
                 seenStreamUrls[ys.url] = true;
                 sources.push(ys);
+                console.log("[WitAnime] Added stream source from Yonaplay: " + ys.server + " -> " + ys.url);
               }
             }
-            if (sources.length >= 2) break;
+            if (sources.length >= 2) {
+              console.log("[WitAnime] Reached desired source count (>= 2). Stopping further candidate tests.");
+              break;
+            }
             continue;
           }
         }
@@ -1704,6 +1824,7 @@ export default class extends Extension {
         };
 
         // 4. Resolve direct video stream
+        console.log("[WitAnime] Resolving direct media URL from: " + streamUrl);
         const direct = await this.resolveEmbedDirectStream(
           streamUrl,
           watchUrl,
@@ -1714,7 +1835,7 @@ export default class extends Extension {
           seenStreamUrls[direct.url] = true;
           const isHls =
             direct.type === "hls" || direct.url.indexOf(".m3u8") !== -1;
-          sources.push({
+          const sourceObj = {
             server:
               "WitAnime • " +
               cleanLabel.toUpperCase() +
@@ -1725,16 +1846,26 @@ export default class extends Extension {
             url: direct.url,
             type: isHls ? "hls" : "mp4",
             headers: direct.headers || streamHeaders,
-          });
+          };
+          sources.push(sourceObj);
+          console.log("[WitAnime] Successfully added playable stream: " + sourceObj.server + " -> " + sourceObj.url);
         }
 
-        // Early exit: stop once we have 4 direct working streams
-        if (sources.length >= 4) break;
+        // Early exit: stop once we have 2 direct working streams
+        if (sources.length >= 2) {
+          console.log("[WitAnime] Found " + sources.length + " playable streams. Early exit to avoid rate limits.");
+          break;
+        }
+
+        // Short throttle pause between candidate attempts
+        await new Promise((resolve) => setTimeout(resolve, 200));
       } catch (e) {
+        console.warn("[WitAnime] Exception evaluating candidate " + item.label + ": " + e);
         continue;
       }
     }
 
+    console.log("[WitAnime] watch() completed. Returning " + sources.length + " playable stream source(s).");
     return {
       sources: sources,
     };
