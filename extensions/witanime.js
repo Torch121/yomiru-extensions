@@ -1,6 +1,6 @@
 // ==YomiruExtension==
 // @name         WitAnime
-// @version      v1.0.4
+// @version      v1.0.5
 // @author       Yomiru
 // @lang         ar
 // @license      MIT
@@ -628,7 +628,7 @@ export default class extends Extension {
     try {
       const res = await this.request(embedUrl, {
         headers: {
-          Referer: embedUrl,
+          Referer: this.baseUrl + "/",
           "User-Agent":
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
         },
@@ -641,6 +641,27 @@ export default class extends Extension {
           : JSON.stringify(res);
       const unpacked = this.unpack(html);
       const searchIn = unpacked + " " + html;
+
+      // Check for JWPlayer/Video setup object with direct sources
+      const setupMatch = searchIn.match(/setup\s*=\s*({[\s\S]*?});/);
+      if (setupMatch && setupMatch[1]) {
+        const fileMatches = [
+          ...setupMatch[1].matchAll(/["']file["']\s*:\s*["']([^"']+)["']/g),
+        ];
+        if (fileMatches.length > 0) {
+          const u = fileMatches[0][1].replace(/\\\//g, "/");
+          return {
+            url: u,
+            type: u.indexOf(".m3u8") !== -1 ? "hls" : "mp4",
+            isDirectVideo: true,
+            headers: {
+              Referer: embedUrl,
+              "User-Agent":
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+            },
+          };
+        }
+      }
 
       const direct = this.findDirectMediaUrls(searchIn);
       if (direct.length > 0) {
@@ -755,6 +776,97 @@ export default class extends Extension {
         };
       }
     } catch (e) {}
+    return null;
+  }
+
+  async extractMailRu(embedUrl) {
+    if (!embedUrl) return null;
+    try {
+      let metaUrl = "";
+      const idMatch = embedUrl.match(/(?:embed\/|\/meta\/)([0-9]+)/);
+      if (idMatch && idMatch[1]) {
+        metaUrl = "https://my.mail.ru/+/video/meta/" + idMatch[1];
+      } else {
+        const html = await this.request(embedUrl, {
+          headers: {
+            Referer: this.baseUrl + "/",
+            "User-Agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+          },
+        });
+        const mMatch = html.match(/["']metadataUrl["']\s*:\s*["']([^"']+)["']/i);
+        if (mMatch && mMatch[1]) {
+          metaUrl = mMatch[1].indexOf("http") === 0 ? mMatch[1] : "https:" + mMatch[1];
+        }
+      }
+      if (!metaUrl) return null;
+
+      const res = await this.request(metaUrl, {
+        headers: {
+          Referer: embedUrl,
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+        },
+      });
+      let meta = typeof res === "string" ? JSON.parse(res) : res;
+      if (meta && meta.videos && Array.isArray(meta.videos) && meta.videos.length > 0) {
+        const vid = meta.videos[0];
+        let u = vid.url || "";
+        if (u.indexOf("//") === 0) u = "https:" + u;
+        return {
+          url: u,
+          type: "mp4",
+          quality: (vid.key || "FHD").toUpperCase(),
+          isDirectVideo: true,
+          headers: {
+            Referer: embedUrl,
+            "User-Agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+          },
+        };
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  async extractDotplay(embedUrl) {
+    if (!embedUrl) return null;
+    try {
+      const dotCodeMatch = embedUrl.match(/embed\/([a-zA-Z0-9]+)/);
+      if (!dotCodeMatch || !dotCodeMatch[1]) return null;
+      const dotCode = dotCodeMatch[1];
+      const dotRes = await this.request(
+        "https://dotplay.net/api.php?code=" + dotCode,
+        {
+          headers: {
+            Accept: "application/json",
+            Referer: embedUrl,
+            "User-Agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+          },
+        }
+      );
+      let dotData = typeof dotRes === "string" ? JSON.parse(dotRes) : dotRes;
+      if (dotData && dotData.success && dotData.video_url) {
+        let videoUrl = "";
+        try {
+          const decoded = atob(dotData.video_url);
+          videoUrl = decoded.split("|")[0];
+        } catch (_) {}
+        if (videoUrl && videoUrl.indexOf("http") === 0) {
+          return {
+            url: videoUrl,
+            type: videoUrl.indexOf(".m3u8") !== -1 ? "hls" : "mp4",
+            isDirectVideo: true,
+            headers: {
+              Referer: embedUrl,
+              "User-Agent":
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+            },
+          };
+        }
+      }
+    } catch (_) {}
     return null;
   }
 
@@ -1038,66 +1150,146 @@ export default class extends Extension {
     if (!embedUrl) return [];
     const sources = [];
     try {
-      const res = await this.request(embedUrl, {
+      const baseMatch = embedUrl.match(/^(https?:\/\/[^\/]+)/);
+      const base = baseMatch ? baseMatch[1] : "https://mid.yonaplay.net";
+
+      // 0. Visit embed page first to establish PHP session & get session cookies
+      await this.request(embedUrl, {
         headers: {
           Referer: this.baseUrl + "/",
           "User-Agent":
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
         },
       });
-      const html =
-        typeof res === "string"
-          ? res
-          : res && res.body
-          ? res.body
-          : JSON.stringify(res);
-      const unpacked = this.unpack(html);
-      const combined = unpacked + " " + html;
 
-      const direct = this.findDirectMediaUrls(combined);
-      if (direct.length > 0) {
-        const m3u8Url = direct[0];
-        sources.push({
-          url: m3u8Url,
-          type: m3u8Url.indexOf(".m3u8") !== -1 ? "hls" : "mp4",
-          server:
-            "WitAnime • YONAPLAY (" + (defaultQuality || "Auto") + " - Direct)",
-          quality: defaultQuality || "Auto",
-          isDirectVideo: true,
-          headers: {
-            Referer: embedUrl,
-            "User-Agent":
-              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
-          },
+      // 1. Init session
+      const initRes = await this.request(base + "/api/init-session.php", {
+        method: "POST",
+        data: {},
+        headers: {
+          "Content-Type": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+          Accept: "application/json",
+          Referer: embedUrl,
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+        },
+      });
+      let init = typeof initRes === "string" ? JSON.parse(initRes) : initRes;
+      if (!init || !init.success || !init.c || !init.k) return [];
+
+      const code = init.c;
+      const pageKey = init.k;
+
+      // 2. Fetch sources list
+      const sourcesRes = await this.request(base + "/api/sources.php", {
+        method: "POST",
+        data: { code: code },
+        headers: {
+          "Content-Type": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+          Accept: "application/json",
+          Referer: embedUrl,
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+        },
+      });
+      let sData = typeof sourcesRes === "string" ? JSON.parse(sourcesRes) : sourcesRes;
+      if (!sData || !sData.success || !sData.qualities) return [];
+
+      const decryptAES = (b64Data, keyStr) => {
+        if (typeof CryptoJS === "undefined") return "";
+        const keyWords = CryptoJS.SHA256(CryptoJS.enc.Utf8.parse(keyStr));
+        const raw = CryptoJS.enc.Base64.parse(b64Data);
+        const j1Words = CryptoJS.lib.WordArray.create(raw.words.slice(0, 3).concat([2]), 16);
+        const ctWords = CryptoJS.lib.WordArray.create(raw.words.slice(7), raw.sigBytes - 28);
+        const dec = CryptoJS.AES.encrypt(ctWords, keyWords, {
+          iv: j1Words,
+          mode: CryptoJS.mode.CTR,
+          padding: CryptoJS.pad.NoPadding,
         });
-      }
+        return dec.ciphertext.toString(CryptoJS.enc.Utf8);
+      };
 
-      const iframeMatches = combined.match(/<iframe[^>]+src=["']([^"']+)["']/gi);
-      if (iframeMatches) {
-        for (let i = 0; i < iframeMatches.length; i++) {
-          const srcMatch = iframeMatches[i].match(/src=["']([^"']+)["']/i);
-          if (srcMatch && srcMatch[1]) {
-            let subUrl = srcMatch[1];
-            if (subUrl.indexOf("//") === 0) subUrl = "https:" + subUrl;
-            const subSource = await this.resolveEmbedDirectStream(
-              subUrl,
-              embedUrl
-            );
-            if (subSource && subSource.url) {
-              sources.push({
-                url: subSource.url,
-                type: subSource.type || "hls",
-                server:
-                  "WitAnime • YONAPLAY (" + (defaultQuality || "HD") + " - Direct)",
-                quality: defaultQuality || "HD",
-                isDirectVideo: true,
-                headers: subSource.headers,
-              });
+      const qKeys = ["4k", "fhd", "hd", "sd"];
+      for (let qi = 0; qi < qKeys.length; qi++) {
+        const qKey = qKeys[qi];
+        const qGroup = sData.qualities[qKey];
+        if (!qGroup || !Array.isArray(qGroup.servers)) continue;
+
+        for (let si = 0; si < qGroup.servers.length; si++) {
+          const srv = qGroup.servers[si];
+          if (!srv || !srv.token) continue;
+
+          try {
+            const apiRes = await this.request(base + "/api/api.php", {
+              method: "POST",
+              data: { code: code, token: srv.token, key: pageKey },
+              headers: {
+                "Content-Type": "application/json",
+                "X-Requested-With": "XMLHttpRequest",
+                Accept: "application/json",
+                Referer: embedUrl,
+                "User-Agent":
+                  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+              },
+            });
+            let apiData = typeof apiRes === "string" ? JSON.parse(apiRes) : apiRes;
+            if (!apiData || !apiData.success || !apiData.d) continue;
+
+            const decryptedUrl = decryptAES(apiData.d, pageKey);
+            if (!decryptedUrl || decryptedUrl.indexOf("http") !== 0) continue;
+
+            if (decryptedUrl.indexOf("dotplay.net") !== -1) {
+              const dotDirect = await this.extractDotplay(decryptedUrl);
+              if (dotDirect && dotDirect.url) {
+                sources.push({
+                  server:
+                    "WitAnime • " +
+                    (srv.name || "DOTPLAY").toUpperCase() +
+                    " (" +
+                    qKey.toUpperCase() +
+                    ")",
+                  quality: qKey.toUpperCase(),
+                  url: dotDirect.url,
+                  type: dotDirect.type || "mp4",
+                  isDirectVideo: true,
+                  headers: dotDirect.headers || {
+                    Referer: decryptedUrl,
+                    "User-Agent":
+                      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+                  },
+                });
+              }
+            } else {
+              const subSource = await this.resolveEmbedDirectStream(
+                decryptedUrl,
+                embedUrl
+              );
+              if (subSource && subSource.url) {
+                sources.push({
+                  server:
+                    "WitAnime • " +
+                    (srv.name || "YONAPLAY").toUpperCase() +
+                    " (" +
+                    (subSource.quality || qKey.toUpperCase()) +
+                    ")",
+                  quality: subSource.quality || qKey.toUpperCase(),
+                  url: subSource.url,
+                  type: subSource.type || "mp4",
+                  isDirectVideo: true,
+                  headers: subSource.headers || {
+                    Referer: decryptedUrl,
+                    "User-Agent":
+                      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+                  },
+                });
+              }
             }
-          }
+          } catch (_) {}
         }
       }
-    } catch (e) {}
+    } catch (_) {}
     return sources;
   }
 
@@ -1176,6 +1368,15 @@ export default class extends Extension {
     }
     if (lower.indexOf("hgcloud") !== -1) {
       return await this.extractHgcloud(streamUrl);
+    }
+    if (
+      lower.indexOf("mail.ru") !== -1 ||
+      lower.indexOf("video.mail") !== -1
+    ) {
+      return await this.extractMailRu(streamUrl);
+    }
+    if (lower.indexOf("dotplay.net") !== -1) {
+      return await this.extractDotplay(streamUrl);
     }
 
     // Generic sniffer
@@ -1310,14 +1511,16 @@ export default class extends Extension {
         l.indexOf("google") !== -1 ||
         l.indexOf("gdrive") !== -1 ||
         l.indexOf("drive") !== -1 ||
+        l.indexOf("yonaplay") !== -1 ||
+        l.indexOf("dotplay") !== -1 ||
+        l.indexOf("mail") !== -1 ||
         l.indexOf("soraplay") !== -1 ||
         l.indexOf("mp4upload") !== -1 ||
         l.indexOf("hgcloud") !== -1 ||
         l.indexOf("yourupload") !== -1 ||
         l.indexOf("streamwish") !== -1 ||
         l.indexOf("awish") !== -1 ||
-        l.indexOf("filemoon") !== -1 ||
-        l.indexOf("yonaplay") !== -1
+        l.indexOf("filemoon") !== -1
       );
     };
 
@@ -1326,13 +1529,14 @@ export default class extends Extension {
       const l = (label || "").toLowerCase();
       if (l.indexOf("ok") !== -1 || l.indexOf("odnoklassniki") !== -1) return 1;
       if (l.indexOf("google") !== -1 || l.indexOf("gdrive") !== -1 || l.indexOf("drive") !== -1) return 2;
-      if (l.indexOf("soraplay") !== -1) return 3;
-      if (l.indexOf("hgcloud") !== -1) return 4;
+      if (l.indexOf("yonaplay") !== -1 || l.indexOf("dotplay") !== -1) return 3;
+      if (l.indexOf("mail") !== -1) return 4;
       if (l.indexOf("mp4upload") !== -1) return 5;
       if (l.indexOf("yourupload") !== -1) return 6;
-      if (l.indexOf("streamwish") !== -1 || l.indexOf("awish") !== -1) return 7;
-      if (l.indexOf("filemoon") !== -1) return 8;
-      if (l.indexOf("yonaplay") !== -1) return 9;
+      if (l.indexOf("soraplay") !== -1) return 7;
+      if (l.indexOf("hgcloud") !== -1) return 8;
+      if (l.indexOf("streamwish") !== -1 || l.indexOf("awish") !== -1) return 9;
+      if (l.indexOf("filemoon") !== -1) return 10;
       return 20;
     };
 
@@ -1524,8 +1728,8 @@ export default class extends Extension {
           });
         }
 
-        // Fast early exit: stop once we have 2 direct working streams
-        if (sources.length >= 2) break;
+        // Early exit: stop once we have 4 direct working streams
+        if (sources.length >= 4) break;
       } catch (e) {
         continue;
       }
