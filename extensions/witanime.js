@@ -1,6 +1,6 @@
 // ==YomiruExtension==
 // @name         WitAnime
-// @version      v1.0.6
+// @version      v1.0.7
 // @author       Yomiru
 // @lang         ar
 // @license      MIT
@@ -240,21 +240,7 @@ export default class extends Extension {
       return bestOverallTarget;
     }
 
-    const fallbackSlug = this.toSlug(clean);
-    const fallbackTarget = {
-      slug: fallbackSlug,
-      isMovie: expectedMovie,
-      title: clean,
-      detailUrl: expectedMovie
-        ? this.baseUrl + "/movie/" + fallbackSlug
-        : this.baseUrl + "/anime/" + fallbackSlug,
-      watchUrl: expectedMovie
-        ? this.baseUrl + "/watch/movie/" + fallbackSlug
-        : this.baseUrl + "/watch/" + fallbackSlug + "/1",
-    };
-    this.titleToTargetCache[cacheKey] = fallbackTarget;
-    this.titleToSlugCache[clean] = fallbackSlug;
-    return fallbackTarget;
+    return null;
   }
 
   parseAnimeCards(html) {
@@ -352,24 +338,17 @@ export default class extends Extension {
         ? res.body
         : JSON.stringify(res);
 
-    const cards = this.parseAnimeCards(html);
-    if (cards.length > 0) {
-      return cards;
+    if (
+      html &&
+      (html.indexOf("429") !== -1 ||
+        html.indexOf("طلبات كثيرة") !== -1 ||
+        html.indexOf("Too Many Requests") !== -1)
+    ) {
+      console.warn("[WitAnime] search() hit rate limit (HTTP 429) for: " + kw);
+      return [];
     }
 
-    // Fallback: Smart scoring target lookup across variations
-    const target = await this.searchAnimeTarget(kw);
-    if (target && target.slug) {
-      return [
-        {
-          title: target.title || kw,
-          url: target.detailUrl,
-          cover: "",
-        },
-      ];
-    }
-
-    return [];
+    return this.parseAnimeCards(html);
   }
 
   async detail(url) {
@@ -396,6 +375,37 @@ export default class extends Extension {
         : res && res.body
         ? res.body
         : JSON.stringify(res);
+
+    if (
+      !html ||
+      html.indexOf("404") !== -1 ||
+      html.indexOf("الصفحة غير موجودة") !== -1 ||
+      html.indexOf("غير موجود") !== -1
+    ) {
+      console.warn("[WitAnime] detail() 404 page not found for: " + fullUrl);
+      return {
+        title: "",
+        cover: "",
+        desc: "",
+        episodes: [],
+        error: "Anime page not found on WitAnime (HTTP 404).",
+      };
+    }
+
+    if (
+      html.indexOf("429") !== -1 ||
+      html.indexOf("طلبات كثيرة") !== -1 ||
+      html.indexOf("Too Many Requests") !== -1
+    ) {
+      console.error("[WitAnime] detail() rate limited (HTTP 429) for: " + fullUrl);
+      return {
+        title: "",
+        cover: "",
+        desc: "",
+        episodes: [],
+        error: "WitAnime server is temporarily busy (HTTP 429). Please wait a moment.",
+      };
+    }
 
     // Title
     const titleMatch = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
@@ -501,14 +511,6 @@ export default class extends Extension {
         episodes.push({
           name: "Episode " + epStr,
           url: this.baseUrl + "/watch/" + slug + "/" + epStr,
-        });
-      }
-    } else {
-      // Fallback: 12 episodes if unreleased or client-rendered
-      for (let i = 1; i <= 12; i++) {
-        episodes.push({
-          name: "Episode " + i,
-          url: this.baseUrl + "/watch/" + slug + "/" + i,
         });
       }
     }
@@ -1501,11 +1503,32 @@ export default class extends Extension {
         ? res.body
         : JSON.stringify(res);
 
-    if (html && (html.indexOf("429") !== -1 || html.indexOf("طلبات كثيرة جدًا") !== -1)) {
-      console.error("[WitAnime] RATE LIMITED (HTTP 429)! WitAnime origin server is throttling requests from this IP. Please wait a moment before trying again.");
+    if (
+      !html ||
+      html.indexOf("404") !== -1 ||
+      html.indexOf("الصفحة غير موجودة") !== -1 ||
+      html.indexOf("غير موجود") !== -1
+    ) {
+      console.error("[WitAnime] Episode watch page not found (HTTP 404): " + watchUrl);
       return {
         sources: [],
-        error: "WitAnime is temporarily rate-limiting requests (HTTP 429). Please wait 1-2 minutes and try again."
+        error: "Episode watch page not found on WitAnime (HTTP 404).",
+      };
+    }
+
+    if (
+      html &&
+      (html.indexOf("429") !== -1 ||
+        html.indexOf("طلبات كثيرة") !== -1 ||
+        html.indexOf("Too Many Requests") !== -1)
+    ) {
+      console.error(
+        "[WitAnime] RATE LIMITED (HTTP 429)! WitAnime origin server is throttling requests from this IP. Please wait a moment before trying again."
+      );
+      return {
+        sources: [],
+        error:
+          "WitAnime is temporarily rate-limiting requests (HTTP 429). Please wait 1-2 minutes and try again.",
       };
     }
 
@@ -1567,11 +1590,28 @@ export default class extends Extension {
     });
 
     if (typeof manifest === "string") {
+      if (
+        manifest.indexOf("429") !== -1 ||
+        manifest.indexOf("Too Many Requests") !== -1 ||
+        manifest.indexOf("طلبات كثيرة") !== -1
+      ) {
+        console.error("[WitAnime] Manifest POST returned HTTP 429 Rate Limit");
+        return {
+          sources: [],
+          error:
+            "WitAnime server is temporarily rate-limiting requests (HTTP 429). Please wait 1-2 minutes and try again.",
+        };
+      }
       try {
         manifest = JSON.parse(manifest);
       } catch (e) {
-        console.warn("[WitAnime] Failed to parse manifest JSON: " + manifest.substring(0, 100));
-        manifest = {};
+        console.warn(
+          "[WitAnime] Failed to parse manifest JSON: " + manifest.substring(0, 100)
+        );
+        return {
+          sources: [],
+          error: "Unable to parse video player sources from WitAnime.",
+        };
       }
     }
 
@@ -1682,8 +1722,8 @@ export default class extends Extension {
 
     candidates.sort((a, b) => a.rank - b.rank);
 
-    // Limit to testing at most 3 top servers to completely prevent rate limiting
-    const candidatesToTry = candidates.slice(0, 3);
+    // Limit to testing at most 2 top servers to completely prevent rate limiting
+    const candidatesToTry = candidates.slice(0, 2);
     console.log(
       "[WitAnime] Candidate selection complete. Testing " +
         candidatesToTry.length +
@@ -1851,8 +1891,8 @@ export default class extends Extension {
           console.log("[WitAnime] Successfully added playable stream: " + sourceObj.server + " -> " + sourceObj.url);
         }
 
-        // Early exit: stop once we have 2 direct working streams
-        if (sources.length >= 2) {
+        // Early exit: stop once we have working direct stream(s)
+        if (sources.length >= 2 || (sources.length >= 1 && !item.isDownload)) {
           console.log("[WitAnime] Found " + sources.length + " playable streams. Early exit to avoid rate limits.");
           break;
         }
