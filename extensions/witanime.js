@@ -1,4 +1,4 @@
-// ==MiruExtension==
+// ==YomiruExtension==
 // @name         WitAnime
 // @version      v1.0.2
 // @author       Yomiru
@@ -10,7 +10,7 @@
 // @webSite      https://witanime.site
 // @nsfw         false
 // @description  مشاهدة وتحميل أفضل مسلسلات وأفلام الأنمي المترجمة أون لاين بجودة عالية عبر WitAnime
-// ==/MiruExtension==
+// ==/YomiruExtension==
 
 export default class extends Extension {
   get baseUrl() {

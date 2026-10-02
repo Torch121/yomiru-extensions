@@ -1,4 +1,4 @@
-// ==MiruExtension==
+// ==YomiruExtension==
 // @name         AniGoGo
 // @version      v0.0.4
 // @author       OshekharO
@@ -8,7 +8,7 @@
 // @package      ani.gogo
 // @type         bangumi
 // @webSite      https://animex.one
-// ==/MiruExtension==
+// ==/YomiruExtension==
 
 export default class extends Extension {
   async req(url, options = {}) {

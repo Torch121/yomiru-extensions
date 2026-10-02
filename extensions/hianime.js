@@ -1,4 +1,4 @@
-// ==MiruExtension==
+// ==YomiruExtension==
 // @name         HiAnime
 // @version      v0.1.0
 // @author       Yomiru
@@ -8,7 +8,7 @@
 // @package      hianime.at
 // @type         bangumi
 // @webSite      https://hianime.at
-// ==/MiruExtension==
+// ==/YomiruExtension==
 
 export default class extends Extension {
   async req(url, options = {}) {

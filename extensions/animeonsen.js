@@ -1,4 +1,4 @@
-// ==MiruExtension==
+// ==YomiruExtension==
 // @name         AnimeOnsen
 // @version      v1.0.0
 // @author       Yomiru
@@ -10,7 +10,7 @@
 // @webSite      https://www.animeonsen.xyz
 // @nsfw         false
 // @description  AnimeOnsen official API provider with live OAuth token negotiation, DASH adaptive streaming, and multilingual soft subtitles.
-// ==/MiruExtension==
+// ==/YomiruExtension==
 
 export default class extends Extension {
   get authUrl() {

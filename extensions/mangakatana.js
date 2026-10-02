@@ -1,4 +1,4 @@
-// ==MiruExtension==
+// ==YomiruExtension==
 // @name         Mangakatana
 // @version      v0.0.1
 // @author       shashankx86
@@ -8,7 +8,7 @@
 // @package      mangakatana.com
 // @type         manga
 // @webSite      https://mangakatana.com/
-// ==/MiruExtension==
+// ==/YomiruExtension==
 
 export default class extends Extension {
   async req(url) {
