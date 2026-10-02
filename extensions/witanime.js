@@ -660,6 +660,41 @@ export default class extends Extension {
     return null;
   }
 
+  async extractHgcloud(embedUrl) {
+    if (!embedUrl) return null;
+    try {
+      const res = await this.request(embedUrl, {
+        headers: {
+          Referer: embedUrl,
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+        },
+      });
+      const html =
+        typeof res === "string"
+          ? res
+          : res && res.body
+          ? res.body
+          : JSON.stringify(res);
+      const unpacked = this.unpack(html);
+      const direct = this.findDirectMediaUrls(unpacked + " " + html);
+      if (direct.length > 0) {
+        const u = direct[0];
+        return {
+          url: u,
+          type: u.indexOf(".m3u8") !== -1 ? "hls" : "mp4",
+          isDirectVideo: true,
+          headers: {
+            Referer: embedUrl,
+            "User-Agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+          },
+        };
+      }
+    } catch (e) {}
+    return null;
+  }
+
   async extractOkRu(embedUrl) {
     if (!embedUrl) return null;
     try {
@@ -680,15 +715,21 @@ export default class extends Extension {
       if (!optMatch) return null;
       const decodedJson = this.decodeHtml(optMatch[1]);
       const opts = JSON.parse(decodedJson);
-      const meta =
+      let meta =
         opts && opts.flashvars && opts.flashvars.metadata
-          ? JSON.parse(opts.flashvars.metadata)
+          ? opts.flashvars.metadata
           : null;
+      if (typeof meta === "string") {
+        try {
+          meta = JSON.parse(meta);
+        } catch (e) {}
+      }
       if (!meta) return null;
 
-      if (meta.hlsMasterPlaylistUrl) {
+      const hlsUrl = meta.hlsManifestUrl || meta.hlsMasterPlaylistUrl;
+      if (hlsUrl) {
         return {
-          url: meta.hlsMasterPlaylistUrl,
+          url: hlsUrl,
           type: "hls",
           isDirectVideo: true,
           headers: {
@@ -1133,6 +1174,9 @@ export default class extends Extension {
     if (lower.indexOf("filemoon") !== -1) {
       return await this.extractFilemoon(streamUrl);
     }
+    if (lower.indexOf("hgcloud") !== -1) {
+      return await this.extractHgcloud(streamUrl);
+    }
 
     // Generic sniffer
     try {
@@ -1261,11 +1305,14 @@ export default class extends Extension {
     const isPlayableServer = (label) => {
       const l = (label || "").toLowerCase();
       return (
-        l.indexOf("soraplay") !== -1 ||
+        l.indexOf("ok") !== -1 ||
+        l.indexOf("odnoklassniki") !== -1 ||
         l.indexOf("google") !== -1 ||
         l.indexOf("gdrive") !== -1 ||
+        l.indexOf("drive") !== -1 ||
+        l.indexOf("soraplay") !== -1 ||
         l.indexOf("mp4upload") !== -1 ||
-        l.indexOf("ok") !== -1 ||
+        l.indexOf("hgcloud") !== -1 ||
         l.indexOf("yourupload") !== -1 ||
         l.indexOf("streamwish") !== -1 ||
         l.indexOf("awish") !== -1 ||
@@ -1277,14 +1324,15 @@ export default class extends Extension {
     // Priority rankings for streaming hosts
     const getServerPriority = (label) => {
       const l = (label || "").toLowerCase();
-      if (l.indexOf("soraplay") !== -1) return 1;
-      if (l.indexOf("google") !== -1 || l.indexOf("gdrive") !== -1) return 2;
-      if (l.indexOf("mp4upload") !== -1) return 3;
-      if (l.indexOf("ok") !== -1) return 4;
-      if (l.indexOf("yourupload") !== -1) return 5;
-      if (l.indexOf("streamwish") !== -1 || l.indexOf("awish") !== -1) return 6;
-      if (l.indexOf("filemoon") !== -1) return 7;
-      if (l.indexOf("yonaplay") !== -1) return 8;
+      if (l.indexOf("ok") !== -1 || l.indexOf("odnoklassniki") !== -1) return 1;
+      if (l.indexOf("google") !== -1 || l.indexOf("gdrive") !== -1 || l.indexOf("drive") !== -1) return 2;
+      if (l.indexOf("soraplay") !== -1) return 3;
+      if (l.indexOf("hgcloud") !== -1) return 4;
+      if (l.indexOf("mp4upload") !== -1) return 5;
+      if (l.indexOf("yourupload") !== -1) return 6;
+      if (l.indexOf("streamwish") !== -1 || l.indexOf("awish") !== -1) return 7;
+      if (l.indexOf("filemoon") !== -1) return 8;
+      if (l.indexOf("yonaplay") !== -1) return 9;
       return 20;
     };
 
@@ -1398,14 +1446,22 @@ export default class extends Extension {
               h.Location ||
               gateRes.url ||
               "";
-            if (loc) {
+            if (loc && loc !== gateUrl) {
               streamUrl =
                 loc.indexOf("http") === 0 ? loc : this.baseUrl + loc;
             } else if (gateRes.body && typeof gateRes.body === "string") {
-              const m = gateRes.body.match(
-                /https?:\/\/[^"'\s<>]+\.(?:m3u8|mp4)[^"'\s<>]*/i
-              );
-              if (m) streamUrl = m[0];
+              const refreshMatch =
+                gateRes.body.match(/http-equiv=["']refresh["'][^>]*content=["'][^"']*url=['"]([^'"]+)['"]/i) ||
+                gateRes.body.match(/<a[^>]+href=["']([^"']+)["'][^>]*>Redirecting to/i);
+              if (refreshMatch && refreshMatch[1]) {
+                const rUrl = refreshMatch[1];
+                streamUrl = rUrl.indexOf("http") === 0 ? rUrl : this.baseUrl + rUrl;
+              } else {
+                const m = gateRes.body.match(
+                  /https?:\/\/[^"'\s<>]+\.(?:m3u8|mp4)[^"'\s<>]*/i
+                );
+                if (m) streamUrl = m[0];
+              }
             }
           }
         } catch (_) {}
