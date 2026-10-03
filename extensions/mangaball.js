@@ -1,6 +1,6 @@
 // ==YomiruExtension==
 // @name         MangaBall
-// @version      v0.0.1
+// @version      v0.0.2
 // @author       Yomiru
 // @lang         all
 // @license      MIT
@@ -104,10 +104,10 @@ export default class extends Extension {
     });
 
     await this.registerSetting({
-      title: "Reverse Order of Chapters",
+      title: "Sort Order of Chapters",
       key: "reverseChaptersOrderMangaBall",
       type: "toggle",
-      description: "Reverse the order of chapters in ascending order",
+      description: "Sort chapters in ascending numerical order (Chapter 1, 2, 3...)",
       defaultValue: "true",
     });
   }
@@ -153,31 +153,102 @@ export default class extends Extension {
     const chaptersRes = await this.req(`/title/chapter-listing?title_id=${actualId}&limit=1000`);
     const chaptersList = (parseData(chaptersRes) || {}).data || [];
 
-    // Group chapters by language
+    // Group chapters by Language AND Scanlation Group to prevent duplicate interleaved releases
     const groups = {};
-    for (const ch of chaptersList) {
+    for (let idx = 0; idx < chaptersList.length; idx++) {
+      const ch = chaptersList[idx];
       const langKey = (ch.lang || "en").toLowerCase();
-      if (!groups[langKey]) groups[langKey] = [];
-      const chNum = ch.chapter_number ?? ch.number ?? "";
-      const name = ch.name ? ch.name.trim() : (chNum ? `Chapter ${chNum}` : "Chapter");
+      const groupName = (ch.group_name || (ch.group && ch.group.name) || "Default").trim();
+      const groupKey = `${langKey}___${groupName}`;
+
+      if (!groups[groupKey]) {
+        groups[groupKey] = {
+          langKey,
+          groupName,
+          chapters: [],
+        };
+      }
+
+      // Numerical chapter parsing
+      let chNum = null;
+      if (ch.chapter_number !== undefined && ch.chapter_number !== null && ch.chapter_number !== "") {
+        const n = parseFloat(ch.chapter_number);
+        if (!isNaN(n)) chNum = n;
+      }
+      if (chNum === null && ch.number !== undefined && ch.number !== null && ch.number !== "") {
+        const n = parseFloat(ch.number);
+        if (!isNaN(n)) chNum = n;
+      }
+      if (chNum === null && ch.name) {
+        const m = ch.name.match(/(?:chapter|ch\.?|ep\.?)\s*(\d+(?:\.\d+)?)/i);
+        if (m) {
+          chNum = parseFloat(m[1]);
+        } else {
+          const numM = ch.name.match(/(\d+(?:\.\d+)?)/);
+          if (numM) chNum = parseFloat(numM[1]);
+        }
+      }
+      if (chNum === null) chNum = 0;
+
+      const rawName = (ch.name || "").trim();
+      let name;
+      if (
+        rawName.toLowerCase().startsWith("chapter") ||
+        rawName.toLowerCase().startsWith("ch.") ||
+        rawName.toLowerCase().startsWith("capitulo")
+      ) {
+        name = rawName;
+      } else if (chNum > 0) {
+        name = `Chapter ${chNum}${rawName ? ` - ${rawName}` : ""}`;
+      } else {
+        name = rawName
+          ? (rawName.toLowerCase().startsWith("vol") ? `Chapter 0 - ${rawName}` : rawName)
+          : "Chapter 0";
+      }
+
       const chUrl = `/chapter-detail/${ch.id || ch._id}?chapter=${encodeURIComponent(chNum)}`;
-      groups[langKey].push({
+      groups[groupKey].chapters.push({
+        _num: chNum,
+        _idx: idx,
         name,
         url: chUrl,
       });
     }
 
-    const reverse = (await this.getSetting("reverseChaptersOrderMangaBall")) === "true";
+    const ascending = (await this.getSetting("reverseChaptersOrderMangaBall")) !== "false";
 
-    const episodes = Object.keys(groups).map((langKey) => {
-      const langTitle = LANG_MAP[langKey] || langKey.toUpperCase();
-      const urls = groups[langKey];
-      if (reverse) {
-        urls.reverse();
+    // Sort chapters within each group numerically
+    for (const k of Object.keys(groups)) {
+      groups[k].chapters.sort((a, b) => {
+        if (a._num !== b._num) {
+          return ascending ? a._num - b._num : b._num - a._num;
+        }
+        return ascending ? a._idx - b._idx : b._idx - a._idx;
+      });
+    }
+
+    // Sort groups: English first, then by language; within language, group with highest chapter count first
+    const groupKeys = Object.keys(groups);
+    groupKeys.sort((a, b) => {
+      const ga = groups[a];
+      const gb = groups[b];
+      if (ga.langKey !== gb.langKey) {
+        if (ga.langKey === "en") return -1;
+        if (gb.langKey === "en") return 1;
+        return ga.langKey.localeCompare(gb.langKey);
       }
+      return gb.chapters.length - ga.chapters.length;
+    });
+
+    const episodes = groupKeys.map((k) => {
+      const g = groups[k];
+      const langTitle = LANG_MAP[g.langKey] || g.langKey.toUpperCase();
       return {
-        title: langTitle,
-        urls,
+        title: `${langTitle} - ${g.groupName}`,
+        urls: g.chapters.map((c) => ({
+          name: c.name,
+          url: c.url,
+        })),
       };
     });
 
