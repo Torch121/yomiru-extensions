@@ -45,6 +45,21 @@
     "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/hianime.js"
   },
   {
+    "package": "mangaball.com",
+    "name": "MangaBall",
+    "version": "v0.0.1",
+    "author": "Yomiru",
+    "lang": "all",
+    "license": "MIT",
+    "type": "manga",
+    "webSite": "https://mangaball.com/",
+    "nsfw": false,
+    "icon": "https://mangaball.com/images/favicon.png",
+    "description": "Read free Manga, Manhwa, Manhua, and Comics online with fastest updates and high-quality images on MangaBall.",
+    "filename": "mangaball.js",
+    "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/mangaball.js"
+  },
+  {
     "package": "mangakatana.com",
     "name": "Mangakatana",
     "version": "v0.0.1",

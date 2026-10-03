@@ -2,7 +2,7 @@
 
 Official remote extension catalog for [Yomiru](https://github.com/Torch121/Yomiru).
 
-> **Last Synced**: 2026-10-03 16:43 UTC  
+> **Last Synced**: 2026-10-03 20:51 UTC  
 > **Repository**: `Torch121/yomiru-extensions` (branch: `main`)  
 > **Manifest URL**: `https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/index.json`
 
@@ -13,6 +13,7 @@ Official remote extension catalog for [Yomiru](https://github.com/Torch121/Yomir
 | <img src="https://www.animeonsen.xyz/assets/icons/icon-192x192.png" width="28" height="28" /> | **AnimeOnsen** | `xyz.animeonsen` | `v1.0.0` | `bangumi` | ALL | Yomiru | [animeonsen.js](./extensions/animeonsen.js) |
 | <img src="https://anilist.co/img/icons/apple-touch-icon.png" width="28" height="28" /> | **AniGoGo** | `ani.gogo` | `v0.0.4` | `bangumi` | EN | OshekharO | [animex.js](./extensions/animex.js) |
 | <img src="https://hianime.at/theme/images/icons-192.png" width="28" height="28" /> | **HiAnime** | `hianime.at` | `v0.1.0` | `bangumi` | EN | Yomiru | [hianime.js](./extensions/hianime.js) |
+| <img src="https://mangaball.com/images/favicon.png" width="28" height="28" /> | **MangaBall** | `mangaball.com` | `v0.0.1` | `manga` | ALL | Yomiru | [mangaball.js](./extensions/mangaball.js) |
 | <img src="https://mangakatana.com/static/img/fav.png" width="28" height="28" /> | **Mangakatana** | `mangakatana.com` | `v0.0.1` | `manga` | EN | shashankx86 | [mangakatana.js](./extensions/mangakatana.js) |
 | <img src="https://witanime.site/assets/images/favicon.ico" width="28" height="28" /> | **WitAnime** | `site.witanime` | `v1.0.9` | `bangumi` | AR | Yomiru | [witanime.js](./extensions/witanime.js) |
 
