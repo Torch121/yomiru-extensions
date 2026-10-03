@@ -2,7 +2,7 @@
 
 Official remote extension catalog for [Yomiru](https://github.com/Torch121/Yomiru).
 
-> **Last Synced**: 2026-10-02 21:06 UTC  
+> **Last Synced**: 2026-10-03 16:08 UTC  
 > **Repository**: `Torch121/yomiru-extensions` (branch: `main`)  
 > **Manifest URL**: `https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/index.json`
 
@@ -14,7 +14,7 @@ Official remote extension catalog for [Yomiru](https://github.com/Torch121/Yomir
 | <img src="https://anilist.co/img/icons/apple-touch-icon.png" width="28" height="28" /> | **AniGoGo** | `ani.gogo` | `v0.0.4` | `bangumi` | EN | OshekharO | [animex.js](./extensions/animex.js) |
 | <img src="https://hianime.at/theme/images/icons-192.png" width="28" height="28" /> | **HiAnime** | `hianime.at` | `v0.1.0` | `bangumi` | EN | Yomiru | [hianime.js](./extensions/hianime.js) |
 | <img src="https://mangakatana.com/static/img/fav.png" width="28" height="28" /> | **Mangakatana** | `mangakatana.com` | `v0.0.1` | `manga` | EN | shashankx86 | [mangakatana.js](./extensions/mangakatana.js) |
-| <img src="https://witanime.site/assets/images/favicon.ico" width="28" height="28" /> | **WitAnime** | `site.witanime` | `v1.0.7` | `bangumi` | AR | Yomiru | [witanime.js](./extensions/witanime.js) |
+| <img src="https://witanime.site/assets/images/favicon.ico" width="28" height="28" /> | **WitAnime** | `site.witanime` | `v1.0.8` | `bangumi` | AR | Yomiru | [witanime.js](./extensions/witanime.js) |
 
 ## How to Use in Yomiru
 1. Open **Yomiru** on your device.

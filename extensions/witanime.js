@@ -1,6 +1,6 @@
 // ==YomiruExtension==
 // @name         WitAnime
-// @version      v1.0.7
+// @version      v1.0.8
 // @author       Yomiru
 // @lang         ar
 // @license      MIT
@@ -718,6 +718,304 @@ export default class extends Extension {
     return null;
   }
 
+  rc4Decrypt(b64Text, key) {
+    if (!b64Text || !key) return "";
+    let binary = "";
+    if (typeof atob === "function") {
+      try {
+        binary = atob(b64Text.trim());
+      } catch (_) {}
+    }
+    if (!binary) {
+      const b64chars =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+      const str = (b64Text || "").replace(/[^A-Za-z0-9+/=]/g, "");
+      let i = 0;
+      while (i < str.length) {
+        const enc1 = b64chars.indexOf(str.charAt(i++));
+        const enc2 = b64chars.indexOf(str.charAt(i++));
+        const enc3 = b64chars.indexOf(str.charAt(i++));
+        const enc4 = b64chars.indexOf(str.charAt(i++));
+        const chr1 = (enc1 << 2) | (enc2 >> 4);
+        const chr2 = ((enc2 & 15) << 4) | (enc3 >> 2);
+        const chr3 = ((enc3 & 3) << 6) | enc4;
+        binary += String.fromCharCode(chr1);
+        if (enc3 !== 64 && enc3 !== -1) binary += String.fromCharCode(chr2);
+        if (enc4 !== 64 && enc4 !== -1) binary += String.fromCharCode(chr3);
+      }
+    }
+    const S = [];
+    for (let i = 0; i < 256; i++) S[i] = i;
+    let j = 0;
+    for (let i = 0; i < 256; i++) {
+      j = (j + S[i] + key.charCodeAt(i % key.length)) % 256;
+      const tmp = S[i];
+      S[i] = S[j];
+      S[j] = tmp;
+    }
+    let i = 0;
+    j = 0;
+    const out = [];
+    for (let m = 0; m < binary.length; m++) {
+      i = (i + 1) % 256;
+      j = (j + S[i]) % 256;
+      const tmp = S[i];
+      S[i] = S[j];
+      S[j] = tmp;
+      const k = S[(S[i] + S[j]) % 256];
+      out.push(k ^ binary.charCodeAt(m));
+    }
+    try {
+      if (typeof TextDecoder !== "undefined") {
+        return new TextDecoder("utf-8").decode(new Uint8Array(out));
+      }
+    } catch (_) {}
+    try {
+      let encoded = "";
+      for (let x = 0; x < out.length; x++) {
+        encoded += "%" + ("00" + out[x].toString(16)).slice(-2);
+      }
+      return decodeURIComponent(encoded);
+    } catch (_) {
+      let s = "";
+      for (let x = 0; x < out.length; x++) {
+        s += String.fromCharCode(out[x]);
+      }
+      return s;
+    }
+  }
+
+  async extractVidea(embedUrl, targetQuality) {
+    if (!embedUrl) return null;
+    try {
+      const res = await this.request(embedUrl, {
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+          Referer: this.baseUrl + "/",
+        },
+      });
+      const html =
+        typeof res === "string"
+          ? res
+          : res && res.body
+          ? res.body
+          : JSON.stringify(res);
+      const xtMatch = html.match(/_xt\s*=\s*["']([^"']+)["']/i);
+      if (!xtMatch) return null;
+
+      const nonce = xtMatch[1];
+      const staticSecret =
+        "xHb0ZvME5q8CBcoQi6AngerDu3FGO9fkUlwPmLVY_RTzj2hJIS4NasXWKy1td7p";
+      const l = nonce.substring(0, 32);
+      const s = nonce.substring(32);
+      let result = "";
+      for (let i = 0; i < 32; i++) {
+        result += s[i - (staticSecret.indexOf(l[i]) - 31)];
+      }
+
+      const chars =
+        "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+      let randomSeed = "";
+      for (let i = 0; i < 8; i++) {
+        randomSeed += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+
+      const vMatch = embedUrl.match(/[?&]v=([a-zA-Z0-9_-]+)/);
+      const videoId = vMatch ? vMatch[1] : "";
+      if (!videoId) return null;
+
+      const xmlUrl =
+        "https://videa.hu/player/xml?v=" +
+        videoId +
+        "&_s=" +
+        randomSeed +
+        "&_t=" +
+        result.substring(0, 16);
+
+      const xmlResp = await this.request(xmlUrl, {
+        fullResponse: true,
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+          Referer: embedUrl,
+        },
+      });
+
+      let b64 = "";
+      let xs = "";
+      if (xmlResp && typeof xmlResp === "object") {
+        b64 = xmlResp.body || "";
+        const h = xmlResp.headers || {};
+        xs = h["x-videa-xs"] || h["X-Videa-Xs"] || "";
+      } else if (typeof xmlResp === "string") {
+        b64 = xmlResp;
+      }
+
+      if (!b64) return null;
+
+      const key = result.substring(16) + randomSeed + xs;
+      const xml = this.rc4Decrypt(b64, key);
+      if (!xml) return null;
+
+      const sourceMatches = [];
+      const smRegex =
+        /<video_source\s+[^>]*name=["']([^"']+)["'][^>]*exp=["']([^"']+)["'][^>]*>(.*?)<\/video_source>/gis;
+      let match;
+      while ((match = smRegex.exec(xml)) !== null) {
+        sourceMatches.push({
+          name: match[1],
+          exp: match[2],
+          url: match[3].trim(),
+        });
+      }
+
+      const hashMatches = {};
+      const hmRegex = /<hash_value_([a-zA-Z0-9]+)>([^<]+)<\/hash_value_/gi;
+      let hMatch;
+      while ((hMatch = hmRegex.exec(xml)) !== null) {
+        hashMatches[hMatch[1]] = hMatch[2];
+      }
+
+      const allStreams = [];
+      for (let i = 0; i < sourceMatches.length; i++) {
+        const sm = sourceMatches[i];
+        let u = sm.url;
+        if (u.indexOf("//") === 0) u = "https:" + u;
+        const hv = hashMatches[sm.name];
+        if (hv) {
+          u +=
+            (u.indexOf("?") !== -1 ? "&" : "?") +
+            "md5=" +
+            hv +
+            "&expires=" +
+            sm.exp;
+        }
+        allStreams.push({ name: sm.name, url: u });
+      }
+
+      if (allStreams.length === 0) return null;
+
+      let selected = null;
+      const tq = (targetQuality || "").toUpperCase();
+      for (let i = 0; i < allStreams.length; i++) {
+        const item = allStreams[i];
+        if (tq === "FHD" && item.name.indexOf("1080") !== -1) {
+          selected = item;
+          break;
+        }
+        if (
+          tq === "HD" &&
+          (item.name.indexOf("720") !== -1 || item.name.indexOf("480") !== -1)
+        ) {
+          selected = item;
+          break;
+        }
+        if (
+          tq === "SD" &&
+          (item.name.indexOf("480") !== -1 ||
+            item.name.indexOf("360") !== -1 ||
+            item.name.indexOf("240") !== -1)
+        ) {
+          selected = item;
+          break;
+        }
+      }
+
+      if (!selected) {
+        selected = allStreams[allStreams.length - 1];
+      }
+
+      return {
+        url: selected.url,
+        type: "mp4",
+        isDirectVideo: true,
+        headers: {
+          Referer: "https://videa.hu/",
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+        },
+      };
+    } catch (e) {
+      console.warn("[WitAnime] extractVidea error: " + e);
+    }
+    return null;
+  }
+
+  async extractVideas(embedUrl) {
+    if (!embedUrl) return null;
+    try {
+      const res = await this.request(embedUrl, {
+        headers: {
+          Referer: this.baseUrl + "/",
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+        },
+      });
+      const html =
+        typeof res === "string"
+          ? res
+          : res && res.body
+          ? res.body
+          : JSON.stringify(res);
+      const m3u8Match =
+        html.match(/https?:\/\/[^"'\s<>]+\.m3u8[^"'\s<>]*/i) ||
+        html.match(/src:\s*["']([^"']+\.m3u8[^"']*)["']/i);
+      if (m3u8Match) {
+        return {
+          url: m3u8Match[1] || m3u8Match[0],
+          type: "hls",
+          isDirectVideo: true,
+          headers: {
+            Referer: embedUrl,
+            "User-Agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+          },
+        };
+      }
+    } catch (e) {
+      console.warn("[WitAnime] extractVideas error: " + e);
+    }
+    return null;
+  }
+
+  async extract4Shared(embedUrl) {
+    if (!embedUrl) return null;
+    try {
+      const res = await this.request(embedUrl, {
+        headers: {
+          Referer: this.baseUrl + "/",
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+        },
+      });
+      const html =
+        typeof res === "string"
+          ? res
+          : res && res.body
+          ? res.body
+          : JSON.stringify(res);
+      const mp4Match =
+        html.match(/https?:\/\/[^"'\s<>]+\.4shared\.com\/[^"'\s<>]+\.(?:mp4|flv)[^"'\s<>]*/i) ||
+        html.match(/file:\s*["'](https?:\/\/[^"']+)["']/i);
+      if (mp4Match) {
+        return {
+          url: mp4Match[1] || mp4Match[0],
+          type: "mp4",
+          isDirectVideo: true,
+          headers: {
+            Referer: embedUrl,
+            "User-Agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+          },
+        };
+      }
+    } catch (e) {
+      console.warn("[WitAnime] extract4Shared error: " + e);
+    }
+    return null;
+  }
+
   async extractOkRu(embedUrl) {
     if (!embedUrl) return null;
     try {
@@ -1356,18 +1654,16 @@ export default class extends Extension {
     return sources;
   }
 
-  async resolveEmbedDirectStream(streamUrl, referer, authHeaders) {
+  async resolveEmbedDirectStream(streamUrl, referer, authHeaders, targetQuality) {
     if (!streamUrl) return null;
     const lower = streamUrl.toLowerCase();
 
     // Ignore known non-stream download sites
     if (
       lower.indexOf("mega.nz") !== -1 ||
-      lower.indexOf("4shared.com") !== -1 ||
       lower.indexOf("uptobox.com") !== -1 ||
       lower.indexOf("mediafire.com") !== -1 ||
       lower.indexOf("1fichier.com") !== -1 ||
-      lower.indexOf("videa.hu") !== -1 ||
       lower.indexOf("workupload.com") !== -1 ||
       lower.indexOf("gofile.io") !== -1
     ) {
@@ -1401,6 +1697,15 @@ export default class extends Extension {
       };
     }
 
+    if (lower.indexOf("videa.hu") !== -1) {
+      return await this.extractVidea(streamUrl, targetQuality);
+    }
+    if (lower.indexOf("videas.fr") !== -1 || lower.indexOf("app.videas") !== -1) {
+      return await this.extractVideas(streamUrl);
+    }
+    if (lower.indexOf("4shared.com") !== -1) {
+      return await this.extract4Shared(streamUrl);
+    }
     if (lower.indexOf("soraplay") !== -1) {
       return await this.extractSoraplay(streamUrl);
     }
@@ -1626,6 +1931,9 @@ export default class extends Extension {
     const isPlayableServer = (label) => {
       const l = (label || "").toLowerCase();
       return (
+        l.indexOf("videa") !== -1 ||
+        l.indexOf("videas") !== -1 ||
+        l.indexOf("mp4upload") !== -1 ||
         l.indexOf("google") !== -1 ||
         l.indexOf("gdrive") !== -1 ||
         l.indexOf("drive") !== -1 ||
@@ -1633,9 +1941,9 @@ export default class extends Extension {
         l.indexOf("odnoklassniki") !== -1 ||
         l.indexOf("yonaplay") !== -1 ||
         l.indexOf("dotplay") !== -1 ||
-        l.indexOf("mail") !== -1 ||
         l.indexOf("soraplay") !== -1 ||
-        l.indexOf("mp4upload") !== -1 ||
+        l.indexOf("4shared") !== -1 ||
+        l.indexOf("mail") !== -1 ||
         l.indexOf("hgcloud") !== -1 ||
         l.indexOf("yourupload") !== -1 ||
         l.indexOf("streamwish") !== -1 ||
@@ -1644,103 +1952,121 @@ export default class extends Extension {
       );
     };
 
-    // Priority rankings: Google Drive > OK.ru > Yonaplay/Dotplay > Mail.ru > Soraplay > others
     const getServerPriority = (label) => {
       const l = (label || "").toLowerCase();
-      if (l.indexOf("google") !== -1 || l.indexOf("gdrive") !== -1 || l.indexOf("drive") !== -1) return 1;
-      if (l.indexOf("ok") !== -1 || l.indexOf("odnoklassniki") !== -1) return 2;
-      if (l.indexOf("yonaplay") !== -1 || l.indexOf("dotplay") !== -1) return 3;
-      if (l.indexOf("mail") !== -1) return 4;
-      if (l.indexOf("soraplay") !== -1) return 5;
-      if (l.indexOf("mp4upload") !== -1) return 6;
-      if (l.indexOf("yourupload") !== -1) return 7;
-      if (l.indexOf("hgcloud") !== -1) return 8;
-      if (l.indexOf("streamwish") !== -1 || l.indexOf("awish") !== -1) return 9;
-      if (l.indexOf("filemoon") !== -1) return 10;
+      if (l.indexOf("videa") !== -1 && l.indexOf("videas") === -1) return 1;
+      if (l.indexOf("mp4upload") !== -1) return 2;
+      if (l.indexOf("ok") !== -1 || l.indexOf("odnoklassniki") !== -1) return 3;
+      if (l.indexOf("videas") !== -1) return 4;
+      if (l.indexOf("google") !== -1 || l.indexOf("gdrive") !== -1 || l.indexOf("drive") !== -1) return 5;
+      if (l.indexOf("soraplay") !== -1) return 6;
+      if (l.indexOf("yonaplay") !== -1 || l.indexOf("dotplay") !== -1) return 7;
+      if (l.indexOf("4shared") !== -1) return 8;
+      if (l.indexOf("mail") !== -1) return 9;
+      if (l.indexOf("yourupload") !== -1) return 10;
+      if (l.indexOf("streamwish") !== -1 || l.indexOf("awish") !== -1) return 11;
+      if (l.indexOf("filemoon") !== -1) return 12;
+      if (l.indexOf("hgcloud") !== -1) return 13;
       return 20;
     };
 
-    // Prioritize FHD servers first. Only fall back to HD/SD if FHD is empty.
     const candidates = [];
     const qualitiesToInspect = ["FHD", "HD", "SD"];
+    const downloads =
+      manifest && typeof manifest === "object" && manifest.downloads
+        ? manifest.downloads
+        : {};
 
     for (let qi = 0; qi < qualitiesToInspect.length; qi++) {
       const q = qualitiesToInspect[qi];
+      const qualityOffset = q === "FHD" ? 0 : q === "HD" ? 100 : 200;
+      const seenLabelsInQuality = {};
+
+      // 1. Collect playable servers from players[q]
       const serverList = players[q] || [];
-      if (!Array.isArray(serverList) || serverList.length === 0) continue;
+      const qualityCandidates = [];
+      if (Array.isArray(serverList)) {
+        for (let si = 0; si < serverList.length; si++) {
+          const s = serverList[si];
+          if (!s || !s.token) continue;
+          const rawLabel = (s.label || "Server").toString().trim();
+          if (!isPlayableServer(rawLabel)) continue;
 
-      for (let si = 0; si < serverList.length; si++) {
-        const s = serverList[si];
-        if (!s || !s.token) continue;
-        const rawLabel = (s.label || "Server").toString().trim();
-        if (!isPlayableServer(rawLabel)) continue;
-
-        candidates.push({
-          quality: q,
-          label: rawLabel,
-          token: s.token,
-          isDownload: false,
-          rank: getServerPriority(rawLabel) + (q === "FHD" ? 0 : q === "HD" ? 10 : 20),
-        });
+          const normLabel = rawLabel.toLowerCase();
+          if (!seenLabelsInQuality[normLabel]) {
+            seenLabelsInQuality[normLabel] = true;
+            qualityCandidates.push({
+              quality: q,
+              label: rawLabel,
+              token: s.token,
+              isDownload: false,
+              priority: getServerPriority(rawLabel),
+              rank: getServerPriority(rawLabel) + qualityOffset,
+            });
+          }
+        }
       }
 
-      // If we found playable candidates in FHD, do NOT queue HD and SD to prevent bursting the server
-      if (candidates.length > 0) {
-        break;
-      }
-    }
-
-    // Fallback: If players had zero servers, check downloads (e.g. mp4upload)
-    if (candidates.length === 0) {
-      console.log("[WitAnime] No player servers found, checking downloads manifest...");
-      const downloads =
-        manifest && typeof manifest === "object" && manifest.downloads
-          ? manifest.downloads
-          : {};
-      for (let qi = 0; qi < qualitiesToInspect.length; qi++) {
-        const q = qualitiesToInspect[qi];
-        const dList = downloads[q] || [];
-        if (!Array.isArray(dList) || dList.length === 0) continue;
-
+      // 2. Also inspect downloads[q] for missing direct servers (like mp4upload, 4shared)
+      const dList = downloads[q] || [];
+      if (Array.isArray(dList)) {
         for (let di = 0; di < dList.length; di++) {
           const d = dList[di];
           if (!d || !d.token) continue;
           const rawLabel = (d.label || "Download").toString().trim();
           if (!isPlayableServer(rawLabel)) continue;
 
-          candidates.push({
-            quality: q,
-            label: rawLabel,
-            token: d.token,
-            isDownload: true,
-            rank: getServerPriority(rawLabel) + 15,
-          });
+          const normLabel = rawLabel.toLowerCase();
+          if (!seenLabelsInQuality[normLabel]) {
+            seenLabelsInQuality[normLabel] = true;
+            qualityCandidates.push({
+              quality: q,
+              label: rawLabel,
+              token: d.token,
+              isDownload: true,
+              priority: getServerPriority(rawLabel),
+              rank: getServerPriority(rawLabel) + qualityOffset,
+            });
+          }
         }
-        if (candidates.length > 0) break;
+      }
+
+      // Sort candidates within this quality by server priority
+      qualityCandidates.sort((a, b) => a.priority - b.priority);
+
+      // Keep up to 2-3 prioritized servers per quality to prevent rate-limiting while providing server choice
+      const selectedForQuality = qualityCandidates.slice(0, 3);
+      for (let ci = 0; ci < selectedForQuality.length; ci++) {
+        candidates.push(selectedForQuality[ci]);
       }
     }
 
     candidates.sort((a, b) => a.rank - b.rank);
 
-    // Limit to testing at most 2 top servers to completely prevent rate limiting
-    const candidatesToTry = candidates.slice(0, 2);
     console.log(
       "[WitAnime] Candidate selection complete. Testing " +
-        candidatesToTry.length +
-        " prioritized server(s): " +
-        candidatesToTry.map((c) => c.label + " (" + c.quality + ")").join(", ")
+        candidates.length +
+        " prioritized server candidate(s): " +
+        candidates.map((c) => c.label + " (" + c.quality + ")").join(", ")
     );
 
     const sources = [];
     const seenStreamUrls = {};
+    const qualityCounts = { FHD: 0, HD: 0, SD: 0 };
 
-    for (let ci = 0; ci < candidatesToTry.length; ci++) {
-      const item = candidatesToTry[ci];
+    for (let ci = 0; ci < candidates.length; ci++) {
+      const item = candidates[ci];
+
+      // If this quality already has 2 working sources, skip further attempts for it
+      if ((qualityCounts[item.quality] || 0) >= 2) {
+        continue;
+      }
+
       console.log(
         "[WitAnime] [" +
           (ci + 1) +
           "/" +
-          candidatesToTry.length +
+          candidates.length +
           "] Testing: " +
           item.label +
           " (" +
@@ -1846,12 +2172,10 @@ export default class extends Extension {
               if (ys && ys.url && !seenStreamUrls[ys.url]) {
                 seenStreamUrls[ys.url] = true;
                 sources.push(ys);
+                const qKey = (ys.quality || item.quality).toUpperCase();
+                qualityCounts[qKey] = (qualityCounts[qKey] || 0) + 1;
                 console.log("[WitAnime] Added stream source from Yonaplay: " + ys.server + " -> " + ys.url);
               }
-            }
-            if (sources.length >= 2) {
-              console.log("[WitAnime] Reached desired source count (>= 2). Stopping further candidate tests.");
-              break;
             }
             continue;
           }
@@ -1868,7 +2192,8 @@ export default class extends Extension {
         const direct = await this.resolveEmbedDirectStream(
           streamUrl,
           watchUrl,
-          streamHeaders
+          streamHeaders,
+          item.quality
         );
 
         if (direct && direct.url && !seenStreamUrls[direct.url]) {
@@ -1877,7 +2202,6 @@ export default class extends Extension {
             direct.type === "hls" || direct.url.indexOf(".m3u8") !== -1;
           const sourceObj = {
             server:
-              "WitAnime • " +
               cleanLabel.toUpperCase() +
               " (" +
               item.quality +
@@ -1888,17 +2212,12 @@ export default class extends Extension {
             headers: direct.headers || streamHeaders,
           };
           sources.push(sourceObj);
+          qualityCounts[item.quality] = (qualityCounts[item.quality] || 0) + 1;
           console.log("[WitAnime] Successfully added playable stream: " + sourceObj.server + " -> " + sourceObj.url);
         }
 
-        // Early exit: stop once we have working direct stream(s)
-        if (sources.length >= 2 || (sources.length >= 1 && !item.isDownload)) {
-          console.log("[WitAnime] Found " + sources.length + " playable streams. Early exit to avoid rate limits.");
-          break;
-        }
-
         // Short throttle pause between candidate attempts
-        await new Promise((resolve) => setTimeout(resolve, 200));
+        await new Promise((resolve) => setTimeout(resolve, 150));
       } catch (e) {
         console.warn("[WitAnime] Exception evaluating candidate " + item.label + ": " + e);
         continue;
