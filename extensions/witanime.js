@@ -87,6 +87,30 @@ export default class extends Extension {
     );
   }
 
+  normalizeTitle(str) {
+    if (!str) return "";
+    return str
+      .replace(/Ⅷ/g, " 8 ")
+      .replace(/Ⅶ/g, " 7 ")
+      .replace(/Ⅵ/g, " 6 ")
+      .replace(/Ⅴ/g, " 5 ")
+      .replace(/Ⅳ/g, " 4 ")
+      .replace(/Ⅲ/g, " 3 ")
+      .replace(/Ⅱ/g, " 2 ")
+      .replace(/Ⅰ/g, " 1 ")
+      .replace(/\bviii\b/gi, " 8 ")
+      .replace(/\bvii\b/gi, " 7 ")
+      .replace(/\bvi\b/gi, " 6 ")
+      .replace(/\biv\b/gi, " 4 ")
+      .replace(/\bv\b/gi, " 5 ")
+      .replace(/\biii\b/gi, " 3 ")
+      .replace(/\bii\b/gi, " 2 ")
+      .toLowerCase()
+      .replace(/[^\w\s]/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
   generateSearchVariations(rawTitle) {
     if (!rawTitle) return [];
     const list = [];
@@ -98,6 +122,29 @@ export default class extends Extension {
     };
 
     add(rawTitle);
+
+    // Unicode Roman numerals -> ASCII Roman
+    const asciiRoman = rawTitle
+      .replace(/Ⅷ/g, "VIII")
+      .replace(/Ⅶ/g, "VII")
+      .replace(/Ⅵ/g, "VI")
+      .replace(/Ⅴ/g, "V")
+      .replace(/Ⅳ/g, "IV")
+      .replace(/Ⅲ/g, "III")
+      .replace(/Ⅱ/g, "II")
+      .replace(/Ⅰ/g, "I");
+    if (asciiRoman !== rawTitle) add(asciiRoman);
+
+    // ASCII Roman numerals -> Unicode Roman
+    const unicodeRoman = rawTitle
+      .replace(/\bviii\b/gi, "Ⅷ")
+      .replace(/\bvii\b/gi, "Ⅶ")
+      .replace(/\bvi\b/gi, "Ⅵ")
+      .replace(/\biv\b/gi, "Ⅳ")
+      .replace(/\bv\b/gi, "Ⅴ")
+      .replace(/\biii\b/gi, "Ⅲ")
+      .replace(/\bii\b/gi, "Ⅱ");
+    if (unicodeRoman !== rawTitle) add(unicodeRoman);
 
     // Strip "Movie", "The Movie", "Film", "Gekijouban", "劇場版", "فيلم"
     const stripped = rawTitle
@@ -120,6 +167,19 @@ export default class extends Extension {
       const parts2 = rawTitle.split(" - ");
       add(parts2[0]);
       if (parts2.length > 1) add(parts2.slice(1).join(" "));
+    }
+
+    // Base title without season / Roman numerals
+    const baseTitle = rawTitle
+      .replace(/\bseason\s*\d+\b/gi, "")
+      .replace(/\b\d+(?:st|nd|rd|th)\s+season\b/gi, "")
+      .replace(/\b(viii|vii|vi|iv|v|iii|ii)\b/gi, "")
+      .replace(/[ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩ]/g, "")
+      .replace(/\s+/g, " ")
+      .replace(/\s*[:\-~]\s*$/, "")
+      .trim();
+    if (baseTitle && baseTitle !== rawTitle && baseTitle.length >= 3) {
+      add(baseTitle);
     }
 
     return list;
@@ -176,7 +236,6 @@ export default class extends Extension {
           const inner = match[3] || "";
           const altMatch = inner.match(/alt=["']([^"']*)["']/i);
           const itemTitle = (altMatch && altMatch[1] ? altMatch[1] : slug).trim();
-          const normalizedItemTitle = itemTitle.toLowerCase();
           const isResultMovie = kind === "movie" || inner.indexOf("فيلم") !== -1;
 
           let score = 0;
@@ -196,9 +255,9 @@ export default class extends Extension {
             }
           }
 
-          // 2. Title and slug comparison
-          const cleanTitle = normalizedItemTitle.replace(/[^\w\s]/g, "").trim();
-          const cleanQuery = normalizedTarget.replace(/[^\w\s]/g, "").trim();
+          // 2. Title and slug comparison with Roman numeral normalization
+          const cleanTitle = this.normalizeTitle(itemTitle);
+          const cleanQuery = this.normalizeTitle(normalizedTarget);
           const querySlug = this.toSlug(normalizedTarget);
 
           if (cleanTitle === cleanQuery || slug === querySlug) {
@@ -270,8 +329,25 @@ export default class extends Extension {
     return null;
   }
 
-  parseAnimeCards(html) {
+  parseAnimeCards(html, isSearch = false) {
     if (!html || typeof html !== "string") return [];
+    if (isSearch) {
+      if (
+        html.indexOf("لم يتم العثور على محتوى") !== -1 ||
+        html.indexOf("لم يُطابق شيء البحث") !== -1 ||
+        html.indexOf("لا توجد أي نتائج") !== -1
+      ) {
+        return [];
+      }
+    }
+
+    // Exclude sidebar recommendations (content after <aside)
+    let content = html;
+    const asideIdx = content.indexOf("<aside");
+    if (asideIdx !== -1) {
+      content = content.substring(0, asideIdx);
+    }
+
     const results = [];
     const seen = {};
 
@@ -279,7 +355,7 @@ export default class extends Extension {
       /<a[^>]+href=["']((?:https?:\/\/witanime\.site)?\/(?:anime|movie)\/([a-zA-Z0-9_-]+))["'][^>]*>([\s\S]*?)<\/a>/gi;
     let match;
 
-    while ((match = cardRegex.exec(html)) !== null) {
+    while ((match = cardRegex.exec(content)) !== null) {
       const rawLink = match[1];
       const slug = match[2];
       const inner = match[3] || "";
@@ -351,7 +427,7 @@ export default class extends Extension {
     return this.parseAnimeCards(html);
   }
 
-  async search(kw, page) {
+  async _searchOnce(kw, page) {
     const p = page || 1;
     const url =
       this.baseUrl + "/search?q=" + encodeURIComponent(kw) + "&page=" + p;
@@ -370,7 +446,57 @@ export default class extends Extension {
       return [];
     }
 
-    return this.parseAnimeCards(html);
+    return this.parseAnimeCards(html, true);
+  }
+
+  async search(kw, page) {
+    const p = page || 1;
+    let results = await this._searchOnce(kw, p);
+    if (results && results.length > 0) return results;
+
+    // 1. If keyword has ASCII Roman numerals, try converting to Unicode Roman numerals
+    const unicodeKw = kw
+      .replace(/\bviii\b/gi, "Ⅷ")
+      .replace(/\bvii\b/gi, "Ⅶ")
+      .replace(/\bvi\b/gi, "Ⅵ")
+      .replace(/\biv\b/gi, "Ⅳ")
+      .replace(/\bv\b/gi, "Ⅴ")
+      .replace(/\biii\b/gi, "Ⅲ")
+      .replace(/\bii\b/gi, "Ⅱ");
+    if (unicodeKw !== kw) {
+      results = await this._searchOnce(unicodeKw, p);
+      if (results && results.length > 0) return results;
+    }
+
+    // 2. If keyword has Unicode Roman numerals, try converting to ASCII Roman numerals
+    const asciiKw = kw
+      .replace(/Ⅷ/g, "VIII")
+      .replace(/Ⅶ/g, "VII")
+      .replace(/Ⅵ/g, "VI")
+      .replace(/Ⅴ/g, "V")
+      .replace(/Ⅳ/g, "IV")
+      .replace(/Ⅲ/g, "III")
+      .replace(/Ⅱ/g, "II")
+      .replace(/Ⅰ/g, "I");
+    if (asciiKw !== kw && asciiKw !== unicodeKw) {
+      results = await this._searchOnce(asciiKw, p);
+      if (results && results.length > 0) return results;
+    }
+
+    // 3. Fallback to base title if keyword had season or Roman numbers
+    const baseKw = kw
+      .replace(/\bseason\s*\d+\b/gi, "")
+      .replace(/\b\d+(?:st|nd|rd|th)\s+season\b/gi, "")
+      .replace(/\b(viii|vii|vi|iv|v|iii|ii)\b/gi, "")
+      .replace(/[ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩ]/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (baseKw && baseKw !== kw && baseKw.length >= 3) {
+      results = await this._searchOnce(baseKw, p);
+      if (results && results.length > 0) return results;
+    }
+
+    return [];
   }
 
   async detail(url) {
