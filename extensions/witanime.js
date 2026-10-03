@@ -1,6 +1,6 @@
 // ==YomiruExtension==
 // @name         WitAnime
-// @version      v1.0.8
+// @version      v1.0.9
 // @author       Yomiru
 // @lang         ar
 // @license      MIT
@@ -21,6 +21,33 @@ export default class extends Extension {
     super();
     this.titleToSlugCache = {};
     this.titleToTargetCache = {};
+  }
+
+  isRateLimitError(html) {
+    if (!html || typeof html !== "string") return false;
+    // Genuine rate limit responses (HTTP 429 / Too Many Requests) are tiny error responses (< 5000 chars),
+    // never full 50KB-150KB HTML anime details or watch pages with media assets.
+    if (html.length > 5000) return false;
+    return (
+      html.indexOf('"message":"Too Many Requests"') !== -1 ||
+      html.indexOf('"message": "Too Many Requests"') !== -1 ||
+      /<title>[^<]*(?:429|Too Many Requests|طلبات كثيرة)/i.test(html) ||
+      /<h1[^>]*>[^<]*(?:429|Too Many Requests)/i.test(html) ||
+      html.indexOf("Too Many Requests") !== -1 ||
+      html.indexOf("طلبات كثيرة") !== -1
+    );
+  }
+
+  isNotFoundError(html) {
+    if (!html || typeof html !== "string") return true;
+    // Genuine 404 error pages are small (< 5000 chars), never full anime pages
+    if (html.length > 5000) return false;
+    return (
+      /<title>[^<]*(?:404|الصفحة غير موجودة|Not Found)/i.test(html) ||
+      /<h1[^>]*>[^<]*(?:404|الصفحة غير موجودة|Not Found)/i.test(html) ||
+      html.indexOf("404") !== -1 ||
+      html.indexOf("الصفحة غير موجودة") !== -1
+    );
   }
 
   decodeHtml(str) {
@@ -338,12 +365,7 @@ export default class extends Extension {
         ? res.body
         : JSON.stringify(res);
 
-    if (
-      html &&
-      (html.indexOf("429") !== -1 ||
-        html.indexOf("طلبات كثيرة") !== -1 ||
-        html.indexOf("Too Many Requests") !== -1)
-    ) {
+    if (this.isRateLimitError(html)) {
       console.warn("[WitAnime] search() hit rate limit (HTTP 429) for: " + kw);
       return [];
     }
@@ -376,12 +398,7 @@ export default class extends Extension {
         ? res.body
         : JSON.stringify(res);
 
-    if (
-      !html ||
-      html.indexOf("404") !== -1 ||
-      html.indexOf("الصفحة غير موجودة") !== -1 ||
-      html.indexOf("غير موجود") !== -1
-    ) {
+    if (!html || this.isNotFoundError(html)) {
       console.warn("[WitAnime] detail() 404 page not found for: " + fullUrl);
       return {
         title: "",
@@ -392,11 +409,7 @@ export default class extends Extension {
       };
     }
 
-    if (
-      html.indexOf("429") !== -1 ||
-      html.indexOf("طلبات كثيرة") !== -1 ||
-      html.indexOf("Too Many Requests") !== -1
-    ) {
+    if (this.isRateLimitError(html)) {
       console.error("[WitAnime] detail() rate limited (HTTP 429) for: " + fullUrl);
       return {
         title: "",
@@ -1808,12 +1821,7 @@ export default class extends Extension {
         ? res.body
         : JSON.stringify(res);
 
-    if (
-      !html ||
-      html.indexOf("404") !== -1 ||
-      html.indexOf("الصفحة غير موجودة") !== -1 ||
-      html.indexOf("غير موجود") !== -1
-    ) {
+    if (!html || this.isNotFoundError(html)) {
       console.error("[WitAnime] Episode watch page not found (HTTP 404): " + watchUrl);
       return {
         sources: [],
@@ -1821,12 +1829,7 @@ export default class extends Extension {
       };
     }
 
-    if (
-      html &&
-      (html.indexOf("429") !== -1 ||
-        html.indexOf("طلبات كثيرة") !== -1 ||
-        html.indexOf("Too Many Requests") !== -1)
-    ) {
+    if (this.isRateLimitError(html)) {
       console.error(
         "[WitAnime] RATE LIMITED (HTTP 429)! WitAnime origin server is throttling requests from this IP. Please wait a moment before trying again."
       );
@@ -1895,11 +1898,7 @@ export default class extends Extension {
     });
 
     if (typeof manifest === "string") {
-      if (
-        manifest.indexOf("429") !== -1 ||
-        manifest.indexOf("Too Many Requests") !== -1 ||
-        manifest.indexOf("طلبات كثيرة") !== -1
-      ) {
+      if (this.isRateLimitError(manifest)) {
         console.error("[WitAnime] Manifest POST returned HTTP 429 Rate Limit");
         return {
           sources: [],
