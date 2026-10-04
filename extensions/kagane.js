@@ -65,6 +65,7 @@ export default class extends Extension {
   async req(url, options = {}) {
     const baseUrl = (await this.getSetting("kagane_url")) || "https://kagane.to";
     const customCookie = (await this.getSetting("kagane_cookie")) || "";
+    const customUa = (await this.getSetting("kagane_user_agent")) || "";
 
     const fullUrl = url.startsWith("http")
       ? url
@@ -72,6 +73,7 @@ export default class extends Extension {
 
     const headers = {
       "User-Agent":
+        customUa ||
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
       "Referer": `${baseUrl.replace(/\/+$/, "")}/`,
       "Origin": baseUrl.replace(/\/+$/, ""),
@@ -80,10 +82,21 @@ export default class extends Extension {
       ...(options.headers || {}),
     };
 
-    return this.request(fullUrl, {
+    const res = await this.request(fullUrl, {
       ...options,
       headers,
     });
+
+    if (
+      typeof res === "string" &&
+      (res.includes("Just a moment...") || res.includes("cf-mitigated") || res.includes("challenge-platform"))
+    ) {
+      console.warn(
+        "[Kagane] Cloudflare verification required. Open extension settings and tap 'Bypass Cloudflare' or enter your cf_clearance cookie."
+      );
+    }
+
+    return res;
   }
 
   async getApiUrl() {
@@ -172,6 +185,14 @@ export default class extends Extension {
       key: "kagane_cookie",
       type: "input",
       description: "Custom Cookie string (e.g., cf_clearance=... for Cloudflare)",
+      defaultValue: "",
+    });
+
+    await this.registerSetting({
+      title: "Custom User-Agent",
+      key: "kagane_user_agent",
+      type: "input",
+      description: "User-Agent matching your Cloudflare clearance cookie",
       defaultValue: "",
     });
   }
@@ -440,6 +461,7 @@ export default class extends Extension {
     const baseUrl = (await this.getSetting("kagane_url")) || "https://kagane.to";
     const isDataSaver = (await this.getSetting("kagane_data_saver")) === "true";
     const customCookie = (await this.getSetting("kagane_cookie")) || "";
+    const customUa = (await this.getSetting("kagane_user_agent")) || "";
 
     // Extract chapterId from URL
     let chapterId = url;
@@ -480,6 +502,7 @@ export default class extends Extension {
         Referer: `${baseUrl.replace(/\/+$/, "")}/`,
         Origin: baseUrl.replace(/\/+$/, ""),
         "User-Agent":
+          customUa ||
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         ...(customCookie ? { Cookie: customCookie } : {}),
       },
