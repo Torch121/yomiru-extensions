@@ -45,6 +45,21 @@
     "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/hianime.js"
   },
   {
+    "package": "kagane.to",
+    "name": "Kagane",
+    "version": "v0.0.1",
+    "author": "Yomiru",
+    "lang": "all",
+    "license": "MIT",
+    "type": "manga",
+    "webSite": "https://kagane.to/",
+    "nsfw": false,
+    "icon": "https://raw.githubusercontent.com/keiyoushi/extensions-source/main/src/all/kagane/res/mipmap-xxhdpi/ic_launcher.png",
+    "description": "Read Manga, Manhwa, and Webtoons online with high-quality images and official releases on Kagane.",
+    "filename": "kagane.js",
+    "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/kagane.js"
+  },
+  {
     "package": "mangaball.com",
     "name": "MangaBall",
     "version": "v0.0.2",
