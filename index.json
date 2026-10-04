@@ -60,6 +60,21 @@
     "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/mangaball.js"
   },
   {
+    "package": "mangafire.to",
+    "name": "MangaFire",
+    "version": "v1.0.0",
+    "author": "Yomiru",
+    "lang": "all",
+    "license": "MIT",
+    "type": "manga",
+    "webSite": "https://mangafire.to/",
+    "nsfw": false,
+    "icon": "https://mangafire.to/assets/mangafire/favicon.svg",
+    "description": "Read free Manga, Manhwa, and Manhua online with high-quality images and fast updates on MangaFire.",
+    "filename": "mangafire.js",
+    "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/mangafire.js"
+  },
+  {
     "package": "mangakatana.com",
     "name": "Mangakatana",
     "version": "v0.0.1",
