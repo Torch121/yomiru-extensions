@@ -60,6 +60,21 @@
     "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/mangaball.js"
   },
   {
+    "package": "mangadar.com",
+    "name": "MangaDar",
+    "version": "v1.0.0",
+    "author": "Yomiru",
+    "lang": "ar",
+    "license": "MIT",
+    "type": "manga",
+    "webSite": "https://mangadar.com",
+    "nsfw": false,
+    "icon": "https://mangadar.com/wp-content/uploads/2026/07/favicon-300x300.png",
+    "description": "قراءة المانجا والمانهوا المترجمة للعربية بجودة عالية وسرعة فائقة عبر موقع مانجا دار (MangaDar).",
+    "filename": "mangadar.js",
+    "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/mangadar.js"
+  },
+  {
     "package": "mangafire.to",
     "name": "MangaFire",
     "version": "v1.0.1",
