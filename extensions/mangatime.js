@@ -150,6 +150,16 @@ export default class extends Extension {
         s += 50;
       }
 
+      // Check alternative titles if present
+      if (Array.isArray(item.alternativeTitles)) {
+        for (const alt of item.alternativeTitles) {
+          const cleanAlt = (typeof alt === "string" ? alt : (alt.title || "")).toLowerCase().trim();
+          if (cleanAlt === cleanQuery) s += 150;
+          else if (cleanAlt.startsWith(cleanQuery)) s += 70;
+          else if (cleanAlt.includes(cleanQuery)) s += 30;
+        }
+      }
+
       // Small score boost for view count if there is a match
       if (s > 0 && item.viewCount) {
         s += Math.min(5, Math.log10(item.viewCount + 1));
@@ -231,14 +241,28 @@ export default class extends Extension {
     }
 
     const baseUrl = (await this.getSetting("mangatime_url")) || "https://mangatime.org";
-    const data = await this.trpc("search.searchSeries", {
-      query: cleanKw,
-      sortBy: "relevance",
-      sortOrder: "desc",
-      limit: 24,
-      page: page || 1,
-    });
-    let results = (data && data.results) || [];
+    let results = [];
+
+    try {
+      const data = await this.trpc("search.searchWorks", {
+        query: cleanKw,
+        limit: 24,
+      });
+      if (data && Array.isArray(data.items) && data.items.length > 0) {
+        results = data.items;
+      }
+    } catch (_) {}
+
+    if (results.length === 0) {
+      const data = await this.trpc("search.searchSeries", {
+        query: cleanKw,
+        sortBy: "relevance",
+        sortOrder: "desc",
+        limit: 24,
+        page: page || 1,
+      });
+      results = (data && data.results) || [];
+    }
 
     // Re-rank results so actual title/slug matches appear at the top
     results = this.reRankResults(results, cleanKw);
