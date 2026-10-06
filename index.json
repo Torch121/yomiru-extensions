@@ -105,6 +105,21 @@
     "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/mangakatana.js"
   },
   {
+    "package": "mangatime.org",
+    "name": "MangaTime",
+    "version": "v1.0.0",
+    "author": "Yomiru",
+    "lang": "ar",
+    "license": "MIT",
+    "type": "manga",
+    "webSite": "https://mangatime.org",
+    "nsfw": false,
+    "icon": "https://mangatime.org/brand/v2/icons/icon-192.png",
+    "description": "قراءة المانجا والمانهوا المترجمة للعربية بجودة عالية وسرعة فائقة عبر موقع مانجا تايم (MangaTime).",
+    "filename": "mangatime.js",
+    "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/mangatime.js"
+  },
+  {
     "package": "site.witanime",
     "name": "WitAnime",
     "version": "v1.0.9",
