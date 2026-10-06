@@ -1,6 +1,6 @@
 // ==YomiruExtension==
 // @name         MangaTime
-// @version      v1.0.0
+// @version      v1.0.1
 // @author       Yomiru
 // @lang         ar
 // @license      MIT
@@ -59,6 +59,96 @@ export default class extends Extension {
     return `${cleanBase}${url.startsWith("/") ? "" : "/"}${url}`;
   }
 
+  formatTitle(title, slug) {
+    const cleanTitle = (title || "").trim();
+    if (!slug) return cleanTitle || "Unknown Title";
+
+    // Clean and capitalize the Latin slug: e.g. "solo-leveling" -> "Solo Leveling"
+    const slugWords = slug
+      .replace(/[-_]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .split(" ")
+      .filter((w) => w.length > 0);
+    const slugTitle = slugWords
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(" ");
+
+    if (!cleanTitle) return slugTitle;
+
+    const hasArabic = /[\u0600-\u06FF]/.test(cleanTitle);
+    const cleanLower = cleanTitle.toLowerCase();
+    const slugLower = slugTitle.toLowerCase();
+
+    // If cleanTitle is already the English/Latin name or matches slug
+    if (cleanLower === slugLower) {
+      return cleanTitle;
+    }
+
+    // For Arabic titles, include the English slug title so Yomiru's matching
+    // engine and English search queries can achieve 100% exact matches
+    if (hasArabic) {
+      return `${slugTitle} (${cleanTitle})`;
+    }
+
+    if (!cleanLower.includes(slugLower) && !slugLower.includes(cleanLower)) {
+      return `${cleanTitle} (${slugTitle})`;
+    }
+
+    return cleanTitle;
+  }
+
+  reRankResults(results, query) {
+    if (!query || !results || results.length <= 1) return results;
+
+    const cleanQuery = query.toLowerCase().trim();
+    const queryTokens = cleanQuery
+      .replace(/[^\p{L}\p{N}\s]+/gu, " ")
+      .split(/\s+/)
+      .filter((w) => w.length > 1);
+
+    function calculateScore(item) {
+      const rawTitle = (item.title || "").toLowerCase();
+      const slug = (item.slug || "").toLowerCase().replace(/[-_]+/g, " ");
+      let s = 0;
+
+      // Exact full match on title or slug
+      if (rawTitle === cleanQuery || slug === cleanQuery) {
+        s += 200;
+      } else if (rawTitle.startsWith(cleanQuery) || slug.startsWith(cleanQuery)) {
+        s += 100;
+      } else if (rawTitle.includes(cleanQuery) || slug.includes(cleanQuery)) {
+        s += 60;
+      }
+
+      // Token matches
+      let matchedTokens = 0;
+      const slugWords = slug.split(/\s+/);
+      for (const token of queryTokens) {
+        if (rawTitle.includes(token) || slug.includes(token)) {
+          matchedTokens++;
+          s += 20;
+          if (slugWords.includes(token)) {
+            s += 15;
+          }
+        }
+      }
+
+      if (queryTokens.length > 1 && matchedTokens === queryTokens.length) {
+        s += 50;
+      }
+
+      // Small score boost for view count if there is a match
+      if (s > 0 && item.viewCount) {
+        s += Math.min(10, Math.log10(item.viewCount + 1));
+      }
+
+      return s;
+    }
+
+    return [...results].sort((a, b) => calculateScore(b) - calculateScore(a));
+  }
+
   async trpc(proc, inputData) {
     const baseUrl = (await this.getSetting("mangatime_url")) || "https://mangatime.org";
     const cleanBase = baseUrl.replace(/\/+$/, "");
@@ -83,7 +173,7 @@ export default class extends Extension {
     });
     const results = (data && data.results) || [];
     return results.map((item) => ({
-      title: (item.title || "Unknown Title").trim(),
+      title: this.formatTitle(item.title, item.slug),
       url: `/manga/${item.slug}`,
       cover: this.resolveCover(item.coverUrl, baseUrl),
     }));
@@ -99,7 +189,7 @@ export default class extends Extension {
       const items = (data && data.items) || [];
       if (items.length > 0) {
         return items.map((item) => ({
-          title: (item.title || "Unknown Title").trim(),
+          title: this.formatTitle(item.title, item.slug),
           url: `/manga/${item.slug}`,
           cover: this.resolveCover(item.coverUrl, baseUrl),
         }));
@@ -116,7 +206,7 @@ export default class extends Extension {
     });
     const results = (searchData && searchData.results) || [];
     return results.map((item) => ({
-      title: (item.title || "Unknown Title").trim(),
+      title: this.formatTitle(item.title, item.slug),
       url: `/manga/${item.slug}`,
       cover: this.resolveCover(item.coverUrl, baseUrl),
     }));
@@ -133,12 +223,16 @@ export default class extends Extension {
       query: cleanKw,
       sortBy: "relevance",
       sortOrder: "desc",
-      limit: 20,
+      limit: 24,
       page: page || 1,
     });
-    const results = (data && data.results) || [];
+    let results = (data && data.results) || [];
+
+    // Re-rank results so actual title/slug matches appear at the top
+    results = this.reRankResults(results, cleanKw);
+
     return results.map((item) => ({
-      title: (item.title || "Unknown Title").trim(),
+      title: this.formatTitle(item.title, item.slug),
       url: `/manga/${item.slug}`,
       cover: this.resolveCover(item.coverUrl, baseUrl),
     }));
@@ -207,7 +301,7 @@ export default class extends Extension {
     }
 
     return {
-      title: series.title || "Unknown Title",
+      title: this.formatTitle(series.title, series.slug),
       cover: this.resolveCover(series.coverUrl, baseUrl),
       desc: series.description || "لا يوجد وصف متاح.",
       episodes: [
