@@ -1,6 +1,6 @@
 // ==YomiruExtension==
 // @name         MangaTime
-// @version      v1.0.1
+// @version      v1.0.2
 // @author       Yomiru
 // @lang         ar
 // @license      MIT
@@ -59,7 +59,7 @@ export default class extends Extension {
     return `${cleanBase}${url.startsWith("/") ? "" : "/"}${url}`;
   }
 
-  formatTitle(title, slug) {
+  formatTitle(title, slug, altTitles) {
     const cleanTitle = (title || "").trim();
     if (!slug) return cleanTitle || "Unknown Title";
 
@@ -108,39 +108,83 @@ export default class extends Extension {
       .filter((w) => w.length > 1);
 
     function calculateScore(item) {
-      const rawTitle = (item.title || "").toLowerCase();
-      const slug = (item.slug || "").toLowerCase().replace(/[-_]+/g, " ");
-      let s = 0;
+      const rawTitle = (item.title || "").toLowerCase().trim();
+      const slugRaw = (item.slug || "").toLowerCase().trim();
+      const slugClean = slugRaw.replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim();
+      const slugWords = slugClean.split(/\s+/).filter((w) => w.length > 0);
+      const altTitles = (item.alternativeTitles || []).map((a) =>
+        (typeof a === "string" ? a : a.title || "").toLowerCase().trim()
+      );
 
-      // Exact full match on title or slug
-      if (rawTitle === cleanQuery || slug === cleanQuery) {
-        s += 200;
-      } else if (rawTitle.startsWith(cleanQuery) || slug.startsWith(cleanQuery)) {
-        s += 100;
-      } else if (rawTitle.includes(cleanQuery) || slug.includes(cleanQuery)) {
-        s += 60;
+      let s = 0.0;
+
+      // 1. Exact match on slug, clean title, or any alt title
+      if (slugClean === cleanQuery || slugRaw === cleanQuery) {
+        s += 500.0;
+      } else if (altTitles.some((alt) => alt === cleanQuery)) {
+        s += 450.0;
+      } else if (rawTitle === cleanQuery) {
+        s += 400.0;
       }
 
-      // Token matches
-      let matchedTokens = 0;
-      const slugWords = slug.split(/\s+/);
-      for (const token of queryTokens) {
-        if (rawTitle.includes(token) || slug.includes(token)) {
-          matchedTokens++;
-          s += 20;
-          if (slugWords.includes(token)) {
-            s += 15;
-          }
+      // 2. Prefix match on slug, alt title, or title
+      if (s < 400) {
+        if (slugClean.startsWith(cleanQuery)) {
+          const ratio = cleanQuery.length / Math.max(cleanQuery.length, slugClean.length);
+          s += 300.0 * ratio;
+        } else if (altTitles.some((alt) => alt.startsWith(cleanQuery))) {
+          s += 250.0;
+        } else if (rawTitle.startsWith(cleanQuery)) {
+          s += 200.0;
         }
       }
 
-      if (queryTokens.length > 1 && matchedTokens === queryTokens.length) {
-        s += 50;
+      // 3. Typo / prefix stem match on first word of slug (e.g. "vagabon" -> "vagabond")
+      if (s < 200 && slugWords.length > 0) {
+        const firstWord = slugWords[0];
+        if (firstWord.startsWith(cleanQuery) || cleanQuery.startsWith(firstWord)) {
+          const ratio = Math.min(cleanQuery.length, firstWord.length) / Math.max(cleanQuery.length, firstWord.length);
+          const wordPenalty = 1.0 / Math.sqrt(slugWords.length);
+          s += 280.0 * ratio * wordPenalty;
+        }
       }
 
-      // Small score boost for view count if there is a match
-      if (s > 0 && item.viewCount) {
-        s += Math.min(10, Math.log10(item.viewCount + 1));
+      // 4. Token containment and position
+      for (const token of queryTokens) {
+        if (slugWords.includes(token)) {
+          const idx = slugWords.indexOf(token);
+          if (idx === 0) {
+            s += 80.0; // Matching first word
+          } else {
+            s += 20.0; // Matching later word (e.g. "Immortal Vagabond")
+          }
+        } else if (slugWords.some((w) => w.includes(token))) {
+          s += 30.0;
+        }
+      }
+
+      // 5. Heavy penalty for spin-offs / secondary keywords if query does not request them
+      const spinOffWords = ["colored", "digital", "guidebook", "official", "extra", "spinoff", "novel", "webtoon"];
+      for (const w of spinOffWords) {
+        if (slugWords.includes(w) && !queryTokens.includes(w)) {
+          s -= 80.0;
+        }
+      }
+
+      // 6. Heavy penalty if candidate starts with an unmatched word when query is short
+      if (
+        slugWords.length > 0 &&
+        queryTokens.length > 0 &&
+        slugWords[0] !== queryTokens[0] &&
+        !slugWords[0].startsWith(queryTokens[0])
+      ) {
+        s -= 100.0;
+      }
+
+      // 7. Minor view count tie-breaker (max 5 points)
+      const views = item.viewCount || 0;
+      if (s > 0 && views > 0) {
+        s += Math.min(5.0, Math.log10(views + 1));
       }
 
       return s;
@@ -219,23 +263,49 @@ export default class extends Extension {
     }
 
     const baseUrl = (await this.getSetting("mangatime_url")) || "https://mangatime.org";
-    const data = await this.trpc("search.searchSeries", {
-      query: cleanKw,
-      sortBy: "relevance",
-      sortOrder: "desc",
-      limit: 24,
-      page: page || 1,
+
+    let items = [];
+    // 1. Try searchWorks (returns rich metadata including alternativeTitles, kind, status)
+    try {
+      const worksData = await this.trpc("search.searchWorks", {
+        query: cleanKw,
+        limit: 24,
+      });
+      if (worksData && Array.isArray(worksData.items) && worksData.items.length > 0) {
+        items = worksData.items;
+      }
+    } catch (_) {}
+
+    // 2. Fallback to searchSeries if searchWorks returned empty
+    if (items.length === 0) {
+      try {
+        const seriesData = await this.trpc("search.searchSeries", {
+          query: cleanKw,
+          sortBy: "relevance",
+          sortOrder: "desc",
+          limit: 24,
+          page: page || 1,
+        });
+        if (seriesData && Array.isArray(seriesData.results) && seriesData.results.length > 0) {
+          items = seriesData.results;
+        }
+      } catch (_) {}
+    }
+
+    // Re-rank results so exact titles/slugs take top priority over partials or unrelated hits
+    const results = this.reRankResults(items, cleanKw);
+
+    return results.map((item) => {
+      const alts = Array.isArray(item.alternativeTitles)
+        ? item.alternativeTitles.map((a) => (typeof a === "string" ? a : a.title || ""))
+        : [];
+      return {
+        title: this.formatTitle(item.title, item.slug, alts),
+        url: `/manga/${item.slug}`,
+        cover: this.resolveCover(item.coverUrl, baseUrl),
+        altTitles: alts,
+      };
     });
-    let results = (data && data.results) || [];
-
-    // Re-rank results so actual title/slug matches appear at the top
-    results = this.reRankResults(results, cleanKw);
-
-    return results.map((item) => ({
-      title: this.formatTitle(item.title, item.slug),
-      url: `/manga/${item.slug}`,
-      cover: this.resolveCover(item.coverUrl, baseUrl),
-    }));
   }
 
   extractSlug(url) {
