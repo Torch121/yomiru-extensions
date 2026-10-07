@@ -1,6 +1,6 @@
 // ==YomiruExtension==
 // @name         Animerco
-// @version      v1.0.1
+// @version      v1.0.2
 // @author       Yomiru
 // @lang         ar
 // @license      MIT
@@ -31,6 +31,23 @@ export default class extends Extension {
         ...(options.headers || {}),
       },
     });
+  }
+
+  _decodeHtml(str) {
+    if (!str || typeof str !== "string") return "";
+    return str
+      .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(parseInt(code, 10)))
+      .replace(/&#x([0-9a-fA-F]+);/g, (_, code) =>
+        String.fromCharCode(parseInt(code, 16))
+      )
+      .replace(/&quot;/g, '"')
+      .replace(/&amp;/g, "&")
+      .replace(/&#039;/g, "'")
+      .replace(/&#038;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&nbsp;/g, " ")
+      .trim();
   }
 
   // 1. Popular Anime Catalog
@@ -69,7 +86,8 @@ export default class extends Extension {
 
   _parseGrid(html) {
     const results = [];
-    const cardRegex = /<div class=['"](?:anime-card|search-card)['"][\s\S]*?<\/div>\s*<\/div>/g;
+    const cardRegex =
+      /<div class=['"](?:anime-card|search-card|episode-card)['"][\s\S]*?<\/div>\s*<\/div>/g;
     let match;
 
     while ((match = cardRegex.exec(html)) !== null) {
@@ -81,22 +99,29 @@ export default class extends Extension {
       const titleMatch =
         block.match(/<h3>([^<]+)<\/h3>/) ||
         block.match(/title=['"]([^'"]+)['"]/);
-      const title = titleMatch ? titleMatch[1].trim() : "";
+      const title = titleMatch ? this._decodeHtml(titleMatch[1]) : "";
 
       const coverMatch =
         block.match(/data-src=['"]([^'"]+)['"]/) ||
         block.match(/src=['"]([^'"]+)['"]/);
       const cover = coverMatch ? coverMatch[1] : "";
 
+      const epMatch = block.match(
+        /class=['"]episode['"][\s\S]*?<span>([^<]+)<\/span>/
+      );
       const yearMatch = block.match(/class=['"]anime-aired['"]>([^<]+)</);
-      const year = yearMatch ? yearMatch[1].trim() : "";
+      const update = epMatch
+        ? this._decodeHtml(epMatch[1])
+        : yearMatch
+        ? yearMatch[1].trim()
+        : "";
 
       if (title && url) {
         results.push({
           title,
           url,
           cover,
-          update: year,
+          update,
         });
       }
     }
@@ -110,18 +135,29 @@ export default class extends Extension {
     const res = await this.req(fullUrl);
     const html = typeof res === "string" ? res : (res && res.body) || "";
 
+    // If an episode URL is passed, resolve to parent anime series
+    if (fullUrl.includes("/episodes/")) {
+      const parentAnimeMatch = html.match(
+        /href=['"](https?:\/\/[^'"]*\/animes\/[^'"]+)['"]/
+      );
+      if (parentAnimeMatch) {
+        return this.detail(parentAnimeMatch[1]);
+      }
+    }
+
     // Title
     let title = "";
     const titleMatch =
       html.match(/<div class=['"]media-title['"]>[\s\S]*?<h1>([^<]+)<\/h1>/) ||
       html.match(/<h1[^>]*>([^<]+)<\/h1>/);
-    if (titleMatch) title = titleMatch[1].trim();
+    if (titleMatch) title = this._decodeHtml(titleMatch[1]);
 
     // Cover
     let cover = "";
     const coverMatch =
-      html.match(/<aside class=['"]widget-sidebar[\s\S]*?data-src=['"]([^'"]+)['"]/) ||
-      html.match(/<meta property=['"]og:image['"] content=['"]([^'"]+)['"]/);
+      html.match(
+        /<aside class=['"]widget-sidebar[\s\S]*?data-src=['"]([^'"]+)['"]/
+      ) || html.match(/<meta property=['"]og:image['"] content=['"]([^'"]+)['"]/);
     if (coverMatch) cover = coverMatch[1];
 
     // Description
@@ -130,7 +166,9 @@ export default class extends Extension {
       html.match(/<div class=['"]media-story[\s\S]*?<p>([\s\S]*?)<\/p>/) ||
       html.match(/<meta property=['"]og:description['"] content=['"]([^'"]+)['"]/);
     if (descMatch) {
-      desc = descMatch[1].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+      desc = this._decodeHtml(
+        descMatch[1].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ")
+      );
     }
 
     // Is it a movie?
@@ -144,7 +182,7 @@ export default class extends Extension {
             title: "الأفلام",
             urls: [
               {
-                name: "Full Movie - " + title,
+                name: "Full Movie",
                 url: fullUrl,
               },
             ],
@@ -179,13 +217,13 @@ export default class extends Extension {
       if (h3Match) {
         sTitle = h3Match[1]
           .replace(/<span[\s\S]*?<\/span>/gi, "")
-          .replace(/<[^>]+>/g, "")
-          .trim();
+          .replace(/<[^>]+>/g, "");
       }
       if (!sTitle) {
         const titleMatch = li.match(/title=['"]([^'"]+)['"]/);
-        if (titleMatch) sTitle = titleMatch[1].trim();
+        if (titleMatch) sTitle = titleMatch[1];
       }
+      sTitle = this._decodeHtml(sTitle);
       if (!sTitle) {
         sTitle = sNum === 0 ? "حلقات خاصة" : `الموسم ${sNum}`;
       }
@@ -261,13 +299,13 @@ export default class extends Extension {
       if (h3Match) {
         epTitle = h3Match[1]
           .replace(/<span[\s\S]*?<\/span>/gi, "")
-          .replace(/<[^>]+>/g, "")
-          .trim();
+          .replace(/<[^>]+>/g, "");
       }
       if (!epTitle) {
         const titleAttrMatch = li.match(/title=['"]([^'"]+)['"]/);
-        if (titleAttrMatch) epTitle = titleAttrMatch[1].trim();
+        if (titleAttrMatch) epTitle = titleAttrMatch[1];
       }
+      epTitle = this._decodeHtml(epTitle);
 
       // Format clean episode title for reliable numbering and display
       const cleanSubtitle = epTitle
@@ -278,7 +316,7 @@ export default class extends Extension {
       if (cleanSubtitle) {
         displayName += `: ${cleanSubtitle}`;
       } else if (epTitle) {
-        displayName = `Episode ${epNum}: ${epTitle}`;
+        displayName += `: ${epTitle}`;
       }
 
       episodeList.push({
@@ -298,10 +336,9 @@ export default class extends Extension {
     const optionRegex =
       /<a[^>]+class=['"][^'"]*option[^'"]*['"][^>]*data-embed-url=['"]([^'"]+)['"][^>]*data-embed-exp=['"](\d+)['"][^>]*>([\s\S]*?)<\/a>/g;
     let match;
-    const now = Math.floor(Date.now() / 1000);
 
     while ((match = optionRegex.exec(html)) !== null) {
-      const sName = match[3].replace(/<[^>]+>/g, "").trim();
+      const sName = this._decodeHtml(match[3].replace(/<[^>]+>/g, ""));
       const embedUrl = match[1].replace(/&amp;/g, "&");
       const exp = parseInt(match[2], 10);
       servers.push({
@@ -318,6 +355,7 @@ export default class extends Extension {
         html.match(/data-nonce=['"]([a-zA-Z0-9]+)['"]/) ||
         html.match(/"security":"([a-zA-Z0-9]+)"/);
       if (postMatch && securityMatch) {
+        const type = fullUrl.includes("/movies/") ? "movie" : "tv";
         for (let num = 1; num <= 6; num++) {
           try {
             const ajaxRes = await this.req("/wp-admin/admin-ajax.php", {
@@ -326,7 +364,7 @@ export default class extends Extension {
                 "Content-Type": "application/x-www-form-urlencoded",
                 Referer: fullUrl,
               },
-              body: `action=player_ajax&security=${securityMatch[1]}&post=${postMatch[1]}&nume=${num}&type=tv`,
+              body: `action=player_ajax&security=${securityMatch[1]}&post=${postMatch[1]}&nume=${num}&type=${type}`,
             });
             const ajaxJson =
               typeof ajaxRes === "string" ? JSON.parse(ajaxRes) : ajaxRes;
@@ -453,6 +491,44 @@ export default class extends Extension {
           }
         }
 
+        // Uqload resolver
+        if (cleanSrc.includes("uqload")) {
+          const uqRes = await this.req(cleanSrc, {
+            headers: { Referer: this.baseUrl },
+          });
+          const uqHtml =
+            typeof uqRes === "string" ? uqRes : (uqRes && uqRes.body) || "";
+          const unpacked = this._unpackJs(uqHtml) + " " + uqHtml;
+          const uqMatch =
+            unpacked.match(
+              /(?:file|src)\s*:\s*['"]([^'"]+\.(?:m3u8|mp4)[^'"]*)['"]/i
+            ) ||
+            unpacked.match(
+              /sources:\s*\[\s*\{\s*file:\s*['"]([^'"]+)['"]/i
+            );
+          if (uqMatch) {
+            const u = uqMatch[1];
+            resolvedSources.push({
+              server: `Uqload (${srv.name})`,
+              url: u,
+              type: u.includes(".m3u8") ? "hls" : "mp4",
+              quality: "720p",
+              headers: { Referer: "https://uqload.com/" },
+            });
+            continue;
+          }
+        }
+
+        // Videa resolver
+        if (cleanSrc.includes("videa.hu") || embedUrl.includes("videa.hu")) {
+          const targetVidea = cleanSrc.includes("videa.hu") ? cleanSrc : embedUrl;
+          const viStreams = await this._extractVidea(targetVidea, srv.name);
+          if (viStreams.length > 0) {
+            resolvedSources.push(...viStreams);
+            continue;
+          }
+        }
+
         // YourUpload resolver
         if (cleanSrc.includes("yourupload.com")) {
           const yuRes = await this.req(cleanSrc, {
@@ -521,18 +597,6 @@ export default class extends Extension {
       } catch {}
     }
 
-    // Fallback if no streams were resolved: return primary option as fallback
-    if (resolvedSources.length === 0 && servers.length > 0) {
-      const fallbackUrl = servers[0].embedUrl;
-      resolvedSources.push({
-        server: servers[0].name,
-        url: fallbackUrl,
-        type: fallbackUrl.includes(".m3u8") ? "hls" : "mp4",
-        quality: "Auto",
-        headers: { Referer: this.baseUrl },
-      });
-    }
-
     return {
       sources: resolvedSources,
       subtitles: [],
@@ -574,6 +638,137 @@ export default class extends Extension {
       });
     }
     return list;
+  }
+
+  async _extractVidea(embedUrl, serverName) {
+    try {
+      const res = await this.req(embedUrl, {
+        headers: { Referer: this.baseUrl },
+      });
+      const html = typeof res === "string" ? res : (res && res.body) || "";
+      const xtMatch = html.match(/_xt\s*=\s*['"]([^'"]+)['"]/i);
+      if (!xtMatch) return [];
+
+      const nonce = xtMatch[1];
+      const staticSecret =
+        "xHb0ZvME5q8CBcoQi6AngerDu3FGO9fkUlwPmLVY_RTzj2hJIS4NasXWKy1td7p";
+      const l = nonce.substring(0, 32);
+      const s = nonce.substring(32);
+      let result = "";
+      for (let i = 0; i < 32; i++) {
+        result += s[i - (staticSecret.indexOf(l[i]) - 31)];
+      }
+      const chars =
+        "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+      let randomSeed = "";
+      for (let i = 0; i < 8; i++) {
+        randomSeed += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      const vMatch = embedUrl.match(/[?&]v=([a-zA-Z0-9_-]+)/);
+      const videoId = vMatch ? vMatch[1] : "";
+      if (!videoId) return [];
+
+      const xmlUrl =
+        "https://videa.hu/player/xml?v=" +
+        videoId +
+        "&_s=" +
+        randomSeed +
+        "&_t=" +
+        result.substring(0, 16);
+      const xmlResp = await this.req(xmlUrl, {
+        fullResponse: true,
+        headers: { Referer: embedUrl },
+      });
+      let b64 = "";
+      let xs = "";
+      if (xmlResp && typeof xmlResp === "object") {
+        b64 = xmlResp.body || "";
+        const h = xmlResp.headers || {};
+        xs = h["x-videa-xs"] || h["X-Videa-Xs"] || "";
+      } else if (typeof xmlResp === "string") {
+        try {
+          const parsed = JSON.parse(xmlResp);
+          b64 = parsed.body || xmlResp;
+          const h = parsed.headers || {};
+          xs = h["x-videa-xs"] || h["X-Videa-Xs"] || "";
+        } catch {
+          b64 = xmlResp;
+        }
+      }
+
+      const key = result.substring(16) + randomSeed + xs;
+      const xml = this._rc4Decrypt(b64, key);
+      if (!xml) return [];
+
+      const sources = [];
+      const smRegex =
+        /<video_source\s+[^>]*name=['"]([^'"]+)['"][^>]*exp=['"]([^'"]+)['"][^>]*>(.*?)<\/video_source>/gis;
+      let match;
+      while ((match = smRegex.exec(xml)) !== null) {
+        sources.push({ name: match[1], exp: match[2], url: match[3].trim() });
+      }
+
+      const hashMatches = {};
+      const hmRegex = /<hash_value_([a-zA-Z0-9]+)>([^<]+)<\/hash_value_/gi;
+      let hMatch;
+      while ((hMatch = hmRegex.exec(xml)) !== null) {
+        hashMatches[hMatch[1]] = hMatch[2];
+      }
+
+      const streams = [];
+      for (const sc of sources) {
+        let u = sc.url;
+        if (u.startsWith("//")) u = "https:" + u;
+        const hv = hashMatches[sc.name];
+        if (hv)
+          u += (u.includes("?") ? "&" : "?") + "md5=" + hv + "&expires=" + sc.exp;
+        streams.push({
+          server: `Videa (${serverName} - ${sc.name})`,
+          quality: sc.name,
+          url: u,
+          type: u.includes(".m3u8") ? "hls" : "mp4",
+          headers: { Referer: "https://videa.hu/" },
+        });
+      }
+      return streams;
+    } catch {
+      return [];
+    }
+  }
+
+  _rc4Decrypt(b64Data, key) {
+    try {
+      const raw = atob(b64Data.trim());
+      const s = [];
+      for (let i = 0; i < raw.length; i++) s.push(raw.charCodeAt(i));
+      const k = [];
+      for (let i = 0; i < key.length; i++) k.push(key.charCodeAt(i));
+
+      const S = [];
+      for (let i = 0; i < 256; i++) S[i] = i;
+      let j = 0;
+      for (let i = 0; i < 256; i++) {
+        j = (j + S[i] + k[i % k.length]) % 256;
+        const tmp = S[i];
+        S[i] = S[j];
+        S[j] = tmp;
+      }
+
+      let i = 0,
+        j2 = 0;
+      const res = [];
+      for (let y = 0; y < s.length; y++) {
+        i = (i + 1) % 256;
+        j2 = (j2 + S[i]) % 256;
+        const tmp = S[i];
+        S[i] = S[j2];
+        S[j2] = tmp;
+        res.push(String.fromCharCode(s[y] ^ S[(S[i] + S[j2]) % 256]));
+      }
+      return res.join("");
+    } catch {
+      return "";
+    }
   }
 
   _unpackJs(source) {
