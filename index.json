@@ -1,5 +1,20 @@
 [
   {
+    "package": "animegg.org",
+    "name": "AnimeGG",
+    "version": "v0.1.0",
+    "author": "Yomiru",
+    "lang": "en",
+    "license": "MIT",
+    "type": "bangumi",
+    "webSite": "https://www.animegg.org",
+    "nsfw": false,
+    "icon": "https://www.animegg.org/images/anime.png",
+    "description": "Watch Anime Online with high-quality subbed and dubbed streaming from AnimeGG.",
+    "filename": "animegg.js",
+    "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/animegg.js"
+  },
+  {
     "package": "xyz.animeonsen",
     "name": "AnimeOnsen",
     "version": "v1.0.0",
