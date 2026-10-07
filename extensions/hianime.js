@@ -42,42 +42,44 @@ export default class extends Extension {
     });
   }
 
+  _parseItems(html) {
+    const items = [];
+    const itemBlocks = html.split(/<div class="flw-item/);
+    for (let i = 1; i < itemBlocks.length; i++) {
+      const block = itemBlocks[i];
+      const coverMatch = block.match(/<img[^>]*?(?:data-src|src)="([^"]+)"/);
+      const titleMatch =
+        block.match(/class="film-name"[\s\S]*?<a[^>]*?title="([^"]+)"/) ||
+        block.match(/class="film-name"[\s\S]*?<a[^>]*?>([\s\S]*?)<\/a>/) ||
+        block.match(/<a[^>]*?title="([^"]+)"/);
+      const urlMatch =
+        block.match(/class="film-name"[\s\S]*?<a[^>]*?href="([^"]+)"/) ||
+        block.match(/<a[^>]*?href="([^"]+)"/);
+
+      if (titleMatch && urlMatch) {
+        items.push({
+          title: titleMatch[1].replace(/<[^>]*>/g, "").trim(),
+          url: urlMatch[1],
+          cover: coverMatch ? coverMatch[1] : "",
+        });
+      }
+    }
+    return items;
+  }
+
   // 1. Popular Anime Releases
   async popular(page) {
     const res = await this.req(`/most-popular?page=${page || 1}`);
     const html = typeof res === "string" ? res : res.html || "";
-    const items = [];
-    const itemRegex =
-      /<div class="flw-item[\s\S]*?class="film-detail"[\s\S]*?<a href="([^"]+)"[\s\S]*?title="([^"]+)"[\s\S]*?<img[^>]*?(?:src|data-src)="([^"]+)"/g;
-
-    let match;
-    while ((match = itemRegex.exec(html)) !== null) {
-      items.push({
-        title: match[2].trim(),
-        url: match[1],
-        cover: match[3],
-      });
-    }
+    const items = this._parseItems(html);
     return items.length > 0 ? items : this.latest(page);
   }
 
   // 2. Latest Anime Releases
   async latest(page) {
-    const res = await this.req(`/recently-updated?page=${page}`);
+    const res = await this.req(`/recently-updated?page=${page || 1}`);
     const html = typeof res === "string" ? res : res.html || "";
-    const items = [];
-    const itemRegex =
-      /<div class="flw-item[\s\S]*?class="film-detail"[\s\S]*?<a href="([^"]+)"[\s\S]*?title="([^"]+)"[\s\S]*?<img[^>]*?(?:src|data-src)="([^"]+)"/g;
-
-    let match;
-    while ((match = itemRegex.exec(html)) !== null) {
-      items.push({
-        title: match[2].trim(),
-        url: match[1],
-        cover: match[3],
-      });
-    }
-    return items;
+    return this._parseItems(html);
   }
 
   get filters() {
@@ -245,19 +247,7 @@ export default class extends Extension {
 
     const res = await this.req(url);
     const html = typeof res === "string" ? res : res.html || "";
-    const items = [];
-    const itemRegex =
-      /<div class="flw-item[\s\S]*?class="film-detail"[\s\S]*?<a href="([^"]+)"[\s\S]*?title="([^"]+)"[\s\S]*?<img[^>]*?(?:src|data-src)="([^"]+)"/g;
-
-    let match;
-    while ((match = itemRegex.exec(html)) !== null) {
-      items.push({
-        title: match[2].trim(),
-        url: match[1],
-        cover: match[3],
-      });
-    }
-    return items;
+    return this._parseItems(html);
   }
 
   // 3. Anime Details & Episodes List
