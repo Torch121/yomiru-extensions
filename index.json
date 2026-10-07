@@ -30,6 +30,21 @@
     "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/animeonsen.js"
   },
   {
+    "package": "org.animerco.det",
+    "name": "Animerco",
+    "version": "v1.0.0",
+    "author": "Yomiru",
+    "lang": "ar",
+    "license": "MIT",
+    "type": "bangumi",
+    "webSite": "https://det.animerco.org",
+    "nsfw": false,
+    "icon": "https://det.animerco.org/wp-content/uploads/2024/03/favicon-16x16-1.png",
+    "description": "مشاهدة وتحميل مسلسلات وأفلام الأنمي المترجمة أون لاين بجودة عالية عبر انمي ركو (Animerco)",
+    "filename": "animerco.js",
+    "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/animerco.js"
+  },
+  {
     "package": "ani.gogo",
     "name": "AniGoGo",
     "version": "v0.0.5",
