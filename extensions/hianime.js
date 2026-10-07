@@ -1,6 +1,6 @@
 // ==YomiruExtension==
 // @name         HiAnime
-// @version      v0.1.1
+// @version      v0.2.0
 // @author       Yomiru
 // @lang         en
 // @license      MIT
@@ -80,9 +80,170 @@ export default class extends Extension {
     return items;
   }
 
-  // 2. Search Anime by Keyword
-  async search(kw, page) {
-    const res = await this.req(`/search?keyword=${encodeURIComponent(kw)}&page=${page}`);
+  get filters() {
+    return this.getFilterSchema();
+  }
+
+  getFilterSchema() {
+    return {
+      type: {
+        title: "Type",
+        options: {
+          "": "All",
+          "tv": "TV",
+          "movie": "Movie",
+          "ova": "OVA",
+          "ona": "ONA",
+          "special": "Special",
+          "music": "Music",
+        },
+      },
+      status: {
+        title: "Status",
+        options: {
+          "": "All",
+          "completed": "Finished Airing",
+          "releasing": "Currently Airing",
+          "not_yet_aired": "Not yet aired",
+        },
+      },
+      rated: {
+        title: "Rated",
+        options: {
+          "": "All",
+          "g": "G",
+          "pg": "PG",
+          "pg_13": "PG-13",
+          "r_17": "R",
+          "r_plus": "R+",
+          "rx": "Rx",
+        },
+      },
+      score: {
+        title: "Score",
+        options: {
+          "": "All",
+          "10": "(10) Masterpiece",
+          "9": "(9) Great",
+          "8": "(8) Very Good",
+          "7": "(7) Good",
+          "6": "(6) Fine",
+          "5": "(5) Average",
+        },
+      },
+      season: {
+        title: "Season",
+        options: {
+          "": "All",
+          "spring": "Spring",
+          "summer": "Summer",
+          "fall": "Fall",
+          "winter": "Winter",
+        },
+      },
+      language: {
+        title: "Language",
+        options: {
+          "": "All",
+          "sub": "SUB",
+          "dub": "DUB",
+        },
+      },
+      sort: {
+        title: "Sort",
+        options: {
+          "": "Default",
+          "updated_date": "Recently Updated",
+          "added_date": "Recently Added",
+          "release_date": "Released Date",
+          "trending": "Trending",
+          "title_az": "Name A-Z",
+          "avg_score": "Score",
+          "mal_score": "MAL Score",
+          "most_viewed": "Most Watched",
+          "most_followed": "Most Followed",
+        },
+      },
+      genre: {
+        title: "Genre",
+        multi: true,
+        options: {
+          "action": "Action",
+          "action-adventure": "Action & Adventure",
+          "adventure": "Adventure",
+          "animation": "Animation",
+          "award-winning": "Award Winning",
+          "comedy": "Comedy",
+          "demons": "Demons",
+          "detective": "Detective",
+          "drama": "Drama",
+          "ecchi": "Ecchi",
+          "fantasy": "Fantasy",
+          "historical": "Historical",
+          "horror": "Horror",
+          "isekai": "Isekai",
+          "magic": "Magic",
+          "martial-arts": "Martial Arts",
+          "mecha": "Mecha",
+          "military": "Military",
+          "music": "Music",
+          "mystery": "Mystery",
+          "parody": "Parody",
+          "psychological": "Psychological",
+          "romance": "Romance",
+          "samurai": "Samurai",
+          "school": "School",
+          "sci-fi": "Sci-Fi",
+          "seinen": "Seinen",
+          "shoujo": "Shoujo",
+          "shounen": "Shounen",
+          "slice-of-life": "Slice of Life",
+          "space": "Space",
+          "sports": "Sports",
+          "supernatural": "Supernatural",
+          "super-power": "Super Power",
+          "suspense": "Suspense",
+          "thriller": "Thriller",
+          "time-travel": "Time Travel",
+          "vampire": "Vampire",
+        },
+      },
+    };
+  }
+
+  // 3. Search Anime by Keyword & Advanced Filters
+  async search(kw, page, filter) {
+    let url;
+    if (filter && Object.keys(filter).length > 0) {
+      const params = [];
+      if (kw && kw.trim()) {
+        params.push(`keyword=${encodeURIComponent(kw.trim())}`);
+      }
+      params.push(`page=${page || 1}`);
+      for (const [k, v] of Object.entries(filter)) {
+        if (v === null || v === undefined || v === '') continue;
+        if (Array.isArray(v)) {
+          for (const item of v) {
+            if (item) params.push(`genre[]=${encodeURIComponent(item)}`);
+          }
+        } else if (k === 'genre' && typeof v === 'string') {
+          if (v.includes(',')) {
+            for (const item of v.split(',')) {
+              if (item.trim()) params.push(`genre[]=${encodeURIComponent(item.trim())}`);
+            }
+          } else {
+            params.push(`genre[]=${encodeURIComponent(v)}`);
+          }
+        } else {
+          params.push(`${encodeURIComponent(k)}=${encodeURIComponent(v)}`);
+        }
+      }
+      url = `/filter?${params.join('&')}`;
+    } else {
+      url = `/search?keyword=${encodeURIComponent(kw || '')}&page=${page || 1}`;
+    }
+
+    const res = await this.req(url);
     const html = typeof res === "string" ? res : res.html || "";
     const items = [];
     const itemRegex =
