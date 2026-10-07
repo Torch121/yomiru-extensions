@@ -1,6 +1,6 @@
 // ==YomiruExtension==
 // @name         Mangakatana
-// @version      v0.0.1
+// @version      v0.0.2
 // @author       shashankx86
 // @lang         en
 // @license      MIT
@@ -35,6 +35,27 @@ export default class extends Extension {
       description: "Reverse the order of chapters in ascending order",
       defaultValue: "true",
     });
+  }
+
+  async popular(page) {
+    const p = page || 1;
+    const res = await this.req(`/manga/page/${p}/?filter=1&order=num_views`);
+    const latest = await this.querySelectorAll(res, "#book_list .item");
+
+    let manga = [];
+    for (const element of latest) {
+      const html = await element.content;
+      const url = await this.getAttributeText(html, "a", "href");
+      const title = await this.querySelector(html, "h3.title a").text;
+      const cover = await this.getAttributeText(html, ".wrap_img img", "src");
+
+      manga.push({
+        title: title.trim(),
+        url,
+        cover: cover,
+      });
+    }
+    return manga.length > 0 ? manga : this.latest(page);
   }
 
   async latest(page) {

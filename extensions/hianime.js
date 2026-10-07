@@ -1,6 +1,6 @@
 // ==YomiruExtension==
 // @name         HiAnime
-// @version      v0.1.0
+// @version      v0.1.1
 // @author       Yomiru
 // @lang         en
 // @license      MIT
@@ -42,7 +42,26 @@ export default class extends Extension {
     });
   }
 
-  // 1. Latest Anime Releases
+  // 1. Popular Anime Releases
+  async popular(page) {
+    const res = await this.req(`/most-popular?page=${page || 1}`);
+    const html = typeof res === "string" ? res : res.html || "";
+    const items = [];
+    const itemRegex =
+      /<div class="flw-item[\s\S]*?class="film-detail"[\s\S]*?<a href="([^"]+)"[\s\S]*?title="([^"]+)"[\s\S]*?<img[^>]*?(?:src|data-src)="([^"]+)"/g;
+
+    let match;
+    while ((match = itemRegex.exec(html)) !== null) {
+      items.push({
+        title: match[2].trim(),
+        url: match[1],
+        cover: match[3],
+      });
+    }
+    return items.length > 0 ? items : this.latest(page);
+  }
+
+  // 2. Latest Anime Releases
   async latest(page) {
     const res = await this.req(`/recently-updated?page=${page}`);
     const html = typeof res === "string" ? res : res.html || "";

@@ -1,6 +1,6 @@
 // ==YomiruExtension==
 // @name         MangaFire
-// @version      v1.0.1
+// @version      v1.0.2
 // @author       Yomiru
 // @lang         all
 // @license      MIT
@@ -305,6 +305,26 @@ export default class extends Extension {
         true: "Ascending (1 to 100)",
         false: "Descending (100 to 1)",
       },
+    });
+  }
+
+  async popular(page = 1) {
+    const res = await this.apiGet("/titles", {
+      sort: "views_7d:desc",
+      page,
+      limit: 20
+    });
+
+    const items = (res && res.items) || [];
+    return items.map((item) => {
+      const poster = (item.poster && (item.poster.large || item.poster.medium || item.poster.small)) || "";
+      const update = item.chapterUpdatedAt || (item.latestChapter ? `Ch. ${item.latestChapter}` : "");
+      return {
+        title: item.title || "",
+        cover: poster,
+        url: item.hid || item.slug || String(item.id),
+        update: update
+      };
     });
   }
 

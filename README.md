@@ -2,7 +2,7 @@
 
 Official remote extension catalog for [Yomiru](https://github.com/Torch121/Yomiru).
 
-> **Last Synced**: 2026-10-06 21:12 UTC  
+> **Last Synced**: 2026-10-07 11:58 UTC  
 > **Repository**: `Torch121/yomiru-extensions` (branch: `main`)  
 > **Manifest URL**: `https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/index.json`
 
@@ -11,14 +11,14 @@ Official remote extension catalog for [Yomiru](https://github.com/Torch121/Yomir
 | Icon | Extension | Package | Version | Type | Lang | Author | Source |
 | :---: | :--- | :--- | :---: | :---: | :---: | :--- | :---: |
 | <img src="https://www.animeonsen.xyz/assets/icons/icon-192x192.png" width="28" height="28" /> | **AnimeOnsen** | `xyz.animeonsen` | `v1.0.0` | `bangumi` | ALL | Yomiru | [animeonsen.js](./extensions/animeonsen.js) |
-| <img src="https://anilist.co/img/icons/apple-touch-icon.png" width="28" height="28" /> | **AniGoGo** | `ani.gogo` | `v0.0.4` | `bangumi` | EN | OshekharO | [animex.js](./extensions/animex.js) |
-| <img src="https://hianime.at/theme/images/icons-192.png" width="28" height="28" /> | **HiAnime** | `hianime.at` | `v0.1.0` | `bangumi` | EN | Yomiru | [hianime.js](./extensions/hianime.js) |
-| <img src="https://mangaball.com/images/favicon.png" width="28" height="28" /> | **MangaBall** | `mangaball.com` | `v0.0.2` | `manga` | ALL | Yomiru | [mangaball.js](./extensions/mangaball.js) |
+| <img src="https://anilist.co/img/icons/apple-touch-icon.png" width="28" height="28" /> | **AniGoGo** | `ani.gogo` | `v0.0.5` | `bangumi` | EN | OshekharO | [animex.js](./extensions/animex.js) |
+| <img src="https://hianime.at/theme/images/icons-192.png" width="28" height="28" /> | **HiAnime** | `hianime.at` | `v0.1.1` | `bangumi` | EN | Yomiru | [hianime.js](./extensions/hianime.js) |
+| <img src="https://mangaball.com/images/favicon.png" width="28" height="28" /> | **MangaBall** | `mangaball.com` | `v0.0.3` | `manga` | ALL | Yomiru | [mangaball.js](./extensions/mangaball.js) |
 | <img src="https://mangadar.com/wp-content/uploads/2026/07/favicon-300x300.png" width="28" height="28" /> | **MangaDar** | `mangadar.com` | `v1.0.0` | `manga` | AR | Yomiru | [mangadar.js](./extensions/mangadar.js) |
-| <img src="https://mangafire.to/assets/mangafire/favicon.svg" width="28" height="28" /> | **MangaFire** | `mangafire.to` | `v1.0.1` | `manga` | ALL | Yomiru | [mangafire.js](./extensions/mangafire.js) |
-| <img src="https://mangakatana.com/static/img/fav.png" width="28" height="28" /> | **Mangakatana** | `mangakatana.com` | `v0.0.1` | `manga` | EN | shashankx86 | [mangakatana.js](./extensions/mangakatana.js) |
+| <img src="https://mangafire.to/assets/mangafire/favicon.svg" width="28" height="28" /> | **MangaFire** | `mangafire.to` | `v1.0.2` | `manga` | ALL | Yomiru | [mangafire.js](./extensions/mangafire.js) |
+| <img src="https://mangakatana.com/static/img/fav.png" width="28" height="28" /> | **Mangakatana** | `mangakatana.com` | `v0.0.2` | `manga` | EN | shashankx86 | [mangakatana.js](./extensions/mangakatana.js) |
 | <img src="https://mangatime.org/brand/v2/icons/icon-192.png" width="28" height="28" /> | **MangaTime** | `mangatime.org` | `v1.0.2` | `manga` | AR | Yomiru | [mangatime.js](./extensions/mangatime.js) |
-| <img src="https://witanime.site/assets/images/favicon.ico" width="28" height="28" /> | **WitAnime** | `site.witanime` | `v1.0.9` | `bangumi` | AR | Yomiru | [witanime.js](./extensions/witanime.js) |
+| <img src="https://witanime.site/assets/images/favicon.ico" width="28" height="28" /> | **WitAnime** | `site.witanime` | `v1.1.0` | `bangumi` | AR | Yomiru | [witanime.js](./extensions/witanime.js) |
 
 ## How to Use in Yomiru
 1. Open **Yomiru** on your device.

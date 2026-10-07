@@ -1,6 +1,6 @@
 // ==YomiruExtension==
 // @name         MangaBall
-// @version      v0.0.2
+// @version      v0.0.3
 // @author       Yomiru
 // @lang         all
 // @license      MIT
@@ -110,6 +110,21 @@ export default class extends Extension {
       description: "Sort chapters in ascending numerical order (Chapter 1, 2, 3...)",
       defaultValue: "true",
     });
+  }
+
+  async popular(page) {
+    const p = page || 1;
+    const res = await this.req(`/title/search-advanced?sort=views&page=${p}&limit=24`);
+    const parsed = parseData(res);
+    const items = (parsed && parsed.data) || [];
+    if (items.length > 0) {
+      return items.map((item) => ({
+        title: (item.name || "Unknown Title").trim(),
+        url: `/title-detail/${item.id || item._id || item.slug}`,
+        cover: resolveCover(item),
+      }));
+    }
+    return this.latest(page);
   }
 
   async latest(page) {

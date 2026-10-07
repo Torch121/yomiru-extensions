@@ -1,6 +1,6 @@
 // ==YomiruExtension==
 // @name         WitAnime
-// @version      v1.0.9
+// @version      v1.1.0
 // @author       Yomiru
 // @lang         ar
 // @license      MIT
@@ -406,10 +406,6 @@ export default class extends Extension {
   }
 
   async popular(page) {
-    return this.latest(page);
-  }
-
-  async latest(page) {
     const p = page || 1;
     const url =
       p > 1
@@ -425,6 +421,28 @@ export default class extends Extension {
         ? res.body
         : JSON.stringify(res);
     return this.parseAnimeCards(html);
+  }
+
+  async latest(page) {
+    const p = page || 1;
+    const url =
+      p > 1
+        ? this.baseUrl + "/seasonal?page=" + p
+        : this.baseUrl + "/seasonal";
+    const res = await this.request(url, {
+      headers: { Referer: this.baseUrl + "/" },
+    });
+    const html =
+      typeof res === "string"
+        ? res
+        : res && res.body
+        ? res.body
+        : JSON.stringify(res);
+    const cards = this.parseAnimeCards(html);
+    if (cards && cards.length > 0) {
+      return cards;
+    }
+    return this.popular(page);
   }
 
   async _searchOnce(kw, page) {

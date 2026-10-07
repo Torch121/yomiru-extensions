@@ -1,6 +1,6 @@
 // ==YomiruExtension==
 // @name         AniGoGo
-// @version      v0.0.4
+// @version      v0.0.5
 // @author       OshekharO
 // @lang         en
 // @license      MIT
@@ -24,6 +24,42 @@ export default class extends Extension {
       ...options,
       headers,
     });
+  }
+
+  async popular(page) {
+    const p = page || 1;
+    const query = `
+      query PopularAnime($page: Int, $limit: Int) {
+        catalogAnime(sort: POPULARITY_DESC, page: $page, limit: $limit) {
+          items {
+            id
+            anilistId
+            titleEnglish
+            titleRomaji
+            coverImage
+          }
+        }
+      }
+    `;
+    try {
+      const res = await this.req("https://graphql.animex.one/graphql", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        data: JSON.stringify({
+          query,
+          variables: { page: p, limit: 20 },
+        }),
+      });
+      const items = res?.data?.catalogAnime?.items || [];
+      if (items.length > 0) {
+        return items.map((item) => ({
+          title: item.titleEnglish || item.titleRomaji || "",
+          url: item.id.toString(),
+          cover: item.coverImage?.extraLarge || item.coverImage?.large || "",
+        }));
+      }
+    } catch (_) {}
+    return this.latest(page);
   }
 
   async latest(page) {

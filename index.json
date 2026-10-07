@@ -17,7 +17,7 @@
   {
     "package": "ani.gogo",
     "name": "AniGoGo",
-    "version": "v0.0.4",
+    "version": "v0.0.5",
     "author": "OshekharO",
     "lang": "en",
     "license": "MIT",
@@ -32,7 +32,7 @@
   {
     "package": "hianime.at",
     "name": "HiAnime",
-    "version": "v0.1.0",
+    "version": "v0.1.1",
     "author": "Yomiru",
     "lang": "en",
     "license": "MIT",
@@ -47,7 +47,7 @@
   {
     "package": "mangaball.com",
     "name": "MangaBall",
-    "version": "v0.0.2",
+    "version": "v0.0.3",
     "author": "Yomiru",
     "lang": "all",
     "license": "MIT",
@@ -77,7 +77,7 @@
   {
     "package": "mangafire.to",
     "name": "MangaFire",
-    "version": "v1.0.1",
+    "version": "v1.0.2",
     "author": "Yomiru",
     "lang": "all",
     "license": "MIT",
@@ -92,7 +92,7 @@
   {
     "package": "mangakatana.com",
     "name": "Mangakatana",
-    "version": "v0.0.1",
+    "version": "v0.0.2",
     "author": "shashankx86",
     "lang": "en",
     "license": "MIT",
@@ -122,7 +122,7 @@
   {
     "package": "site.witanime",
     "name": "WitAnime",
-    "version": "v1.0.9",
+    "version": "v1.1.0",
     "author": "Yomiru",
     "lang": "ar",
     "license": "MIT",
