@@ -84,8 +84,10 @@ export default class extends Extension {
     for (let i = 1; i < parts.length; i++) {
       const part = parts[i];
       const titleMatch =
-        part.match(/<a[^>]+class="[^"]*jtip[^"]*"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/i) ||
-        part.match(/class="title-manga"[^>]*>[\s\S]*?<a[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/i);
+        part.match(/class="[^"]*title-manga[^"]*"[^>]*>[\s\S]*?<a[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/i) ||
+        part.match(/<a[^>]+href="([^"]+)"[^>]+class="[^"]*jtip[^"]*"[^>]*>([\s\S]*?)<\/a>/i) ||
+        part.match(/<a[^>]+class="[^"]*jtip[^"]*"[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/i) ||
+        part.match(/<p[^>]+class="[^"]*title-manga[^"]*"[^>]*>[\s\S]*?<a[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/i);
 
       const coverMatch =
         part.match(/<img[^>]+src="([^"]+)"/i) ||
@@ -94,9 +96,9 @@ export default class extends Extension {
       const latestChapMatch = part.match(/class="[^"]*list-2-chap[^"]*"[^>]*>([\s\S]*?)<\/a>/i);
 
       if (titleMatch) {
-        const rawUrl = titleMatch[1];
+        let rawUrl = titleMatch[1].trim();
         let title = titleMatch[2].replace(/<[^>]*>/g, "").trim();
-        let cover = coverMatch ? coverMatch[1] : "";
+        let cover = coverMatch ? coverMatch[1].trim() : "";
         if (cover && !cover.startsWith("http")) {
           cover = `${baseUrl}${cover.startsWith("/") ? "" : "/"}${cover}`;
         }
@@ -176,7 +178,13 @@ export default class extends Extension {
 
     // Extract manga ID
     const mangaIdMatch = html.match(/id="manga_id"[^>]+value="(\d+)"/i);
-    const mangaId = mangaIdMatch ? mangaIdMatch[1] : null;
+    let mangaId = mangaIdMatch ? mangaIdMatch[1] : null;
+    if (!mangaId) {
+      const urlIdMatch = fullMangaUrl.match(/-(\d+)\/?$/);
+      if (urlIdMatch) {
+        mangaId = urlIdMatch[1];
+      }
+    }
 
     // Parse initial chapter list
     const chaptersList = [];
