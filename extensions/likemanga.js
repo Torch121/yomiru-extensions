@@ -1,6 +1,6 @@
 // ==YomiruExtension==
 // @name         LikeManga
-// @version      v1.0.0
+// @version      v1.0.1
 // @author       Yomiru
 // @lang         all
 // @license      MIT
@@ -79,6 +79,7 @@ export default class extends Extension {
   _parseItems(html, baseUrl = "https://likemanga.ink") {
     if (!html || typeof html !== "string") return [];
     const items = [];
+    const seen = new Set();
     const parts = html.split(/<div class="[^"]*video[^"]*"/i);
 
     for (let i = 1; i < parts.length; i++) {
@@ -105,12 +106,33 @@ export default class extends Extension {
 
         const latestChap = latestChapMatch ? latestChapMatch[1].replace(/<[^>]*>/g, "").trim() : "";
 
-        items.push({
-          title,
-          url: rawUrl,
-          cover,
-          update: latestChap,
-        });
+        if (title && !seen.has(rawUrl)) {
+          seen.add(rawUrl);
+          items.push({
+            title,
+            url: rawUrl,
+            cover,
+            update: latestChap,
+          });
+        }
+      }
+    }
+
+    // Global fallback if parts splitting failed
+    if (items.length === 0) {
+      const cardMatches = [...html.matchAll(/class="[^"]*title-manga[^"]*"[^>]*>[\s\S]*?<a[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi)];
+      for (const m of cardMatches) {
+        const rawUrl = m[1].trim();
+        const title = m[2].replace(/<[^>]*>/g, "").trim();
+        if (title && !seen.has(rawUrl)) {
+          seen.add(rawUrl);
+          items.push({
+            title,
+            url: rawUrl,
+            cover: "",
+            update: "",
+          });
+        }
       }
     }
 

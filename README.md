@@ -2,7 +2,7 @@
 
 Official remote extension catalog for [Yomiru](https://github.com/Torch121/Yomiru).
 
-> **Last Synced**: 2026-10-08 22:43 UTC  
+> **Last Synced**: 2026-10-08 22:53 UTC  
 > **Repository**: `Torch121/yomiru-extensions` (branch: `main`)  
 > **Manifest URL**: `https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/index.json`
 
@@ -17,7 +17,7 @@ Official remote extension catalog for [Yomiru](https://github.com/Torch121/Yomir
 | <img src="https://ani.pm/icon.png" width="28" height="28" /> | **Ani.pm** | `pm.ani` | `v1.0.0` | `bangumi` | ALL | Yomiru | [anipm.js](./extensions/anipm.js) |
 | <img src="https://aniwaves.ru/assets/images/favicons/favicon-96x96.png" width="28" height="28" /> | **AniWaves** | `ru.aniwaves` | `v1.0.0` | `bangumi` | ALL | Yomiru | [aniwaves.js](./extensions/aniwaves.js) |
 | <img src="https://hianime.at/theme/images/icons-192.png" width="28" height="28" /> | **HiAnime** | `hianime.at` | `v0.2.0` | `bangumi` | EN | Yomiru | [hianime.js](./extensions/hianime.js) |
-| <img src="https://likemanga.ink/upload/logos/2024/09/fav_1727153781_66f24675e291d.png" width="28" height="28" /> | **LikeManga** | `ink.likemanga` | `v1.0.0` | `manga` | ALL | Yomiru | [likemanga.js](./extensions/likemanga.js) |
+| <img src="https://likemanga.ink/upload/logos/2024/09/fav_1727153781_66f24675e291d.png" width="28" height="28" /> | **LikeManga** | `ink.likemanga` | `v1.0.1` | `manga` | ALL | Yomiru | [likemanga.js](./extensions/likemanga.js) |
 | <img src="https://mangaball.com/images/favicon.png" width="28" height="28" /> | **MangaBall** | `mangaball.com` | `v0.0.3` | `manga` | ALL | Yomiru | [mangaball.js](./extensions/mangaball.js) |
 | <img src="https://mangadar.com/wp-content/uploads/2026/07/favicon-300x300.png" width="28" height="28" /> | **MangaDar** | `mangadar.com` | `v1.0.0` | `manga` | AR | Yomiru | [mangadar.js](./extensions/mangadar.js) |
 | <img src="https://mangafire.to/assets/mangafire/favicon.svg" width="28" height="28" /> | **MangaFire** | `mangafire.to` | `v1.0.2` | `manga` | ALL | Yomiru | [mangafire.js](./extensions/mangafire.js) |
