@@ -105,6 +105,21 @@
     "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/hianime.js"
   },
   {
+    "package": "ink.likemanga",
+    "name": "LikeManga",
+    "version": "v1.0.0",
+    "author": "Yomiru",
+    "lang": "all",
+    "license": "MIT",
+    "type": "manga",
+    "webSite": "https://likemanga.ink/",
+    "nsfw": false,
+    "icon": "https://likemanga.ink/upload/logos/2024/09/fav_1727153781_66f24675e291d.png",
+    "description": "Read free Manga, Manhwa, and Manhua online with fastest updates and high-quality images on LikeManga.",
+    "filename": "likemanga.js",
+    "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/likemanga.js"
+  },
+  {
     "package": "mangaball.com",
     "name": "MangaBall",
     "version": "v0.0.3",
