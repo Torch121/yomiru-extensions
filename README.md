@@ -2,7 +2,7 @@
 
 Official remote extension catalog for [Yomiru](https://github.com/Torch121/Yomiru).
 
-> **Last Synced**: 2026-10-07 21:46 UTC  
+> **Last Synced**: 2026-10-08 19:08 UTC  
 > **Repository**: `Torch121/yomiru-extensions` (branch: `main`)  
 > **Manifest URL**: `https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/index.json`
 
@@ -14,6 +14,7 @@ Official remote extension catalog for [Yomiru](https://github.com/Torch121/Yomir
 | <img src="https://www.animeonsen.xyz/assets/icons/icon-192x192.png" width="28" height="28" /> | **AnimeOnsen** | `xyz.animeonsen` | `v1.0.0` | `bangumi` | ALL | Yomiru | [animeonsen.js](./extensions/animeonsen.js) |
 | <img src="https://det.animerco.org/wp-content/uploads/2024/03/favicon-16x16-1.png" width="28" height="28" /> | **Animerco** | `org.animerco.det` | `v1.0.2` | `bangumi` | AR | Yomiru | [animerco.js](./extensions/animerco.js) |
 | <img src="https://anilist.co/img/icons/apple-touch-icon.png" width="28" height="28" /> | **AniGoGo** | `ani.gogo` | `v0.0.5` | `bangumi` | EN | OshekharO | [animex.js](./extensions/animex.js) |
+| <img src="https://ani.pm/icon.png" width="28" height="28" /> | **Ani.pm** | `pm.ani` | `v1.0.0` | `bangumi` | ALL | Yomiru | [anipm.js](./extensions/anipm.js) |
 | <img src="https://hianime.at/theme/images/icons-192.png" width="28" height="28" /> | **HiAnime** | `hianime.at` | `v0.2.0` | `bangumi` | EN | Yomiru | [hianime.js](./extensions/hianime.js) |
 | <img src="https://mangaball.com/images/favicon.png" width="28" height="28" /> | **MangaBall** | `mangaball.com` | `v0.0.3` | `manga` | ALL | Yomiru | [mangaball.js](./extensions/mangaball.js) |
 | <img src="https://mangadar.com/wp-content/uploads/2026/07/favicon-300x300.png" width="28" height="28" /> | **MangaDar** | `mangadar.com` | `v1.0.0` | `manga` | AR | Yomiru | [mangadar.js](./extensions/mangadar.js) |

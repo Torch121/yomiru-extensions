@@ -60,6 +60,21 @@
     "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/animex.js"
   },
   {
+    "package": "pm.ani",
+    "name": "Ani.pm",
+    "version": "v1.0.0",
+    "author": "Yomiru",
+    "lang": "all",
+    "license": "MIT",
+    "type": "bangumi",
+    "webSite": "https://ani.pm",
+    "nsfw": false,
+    "icon": "https://ani.pm/icon.png",
+    "description": "Watch Anime Online in HD with multi-language soft/hard subtitles (Arabic, English, French, etc.) and English Dubs from Ani.pm",
+    "filename": "anipm.js",
+    "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/anipm.js"
+  },
+  {
     "package": "hianime.at",
     "name": "HiAnime",
     "version": "v0.2.0",
