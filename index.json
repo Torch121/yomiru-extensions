@@ -75,6 +75,21 @@
     "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/anipm.js"
   },
   {
+    "package": "ru.aniwaves",
+    "name": "AniWaves",
+    "version": "v1.0.0",
+    "author": "Yomiru",
+    "lang": "all",
+    "license": "MIT",
+    "type": "bangumi",
+    "webSite": "https://aniwaves.ru",
+    "nsfw": false,
+    "icon": "https://aniwaves.ru/assets/images/favicons/favicon-96x96.png",
+    "description": "Watch Anime Online with high-quality subbed and dubbed streaming from AniWaves.",
+    "filename": "aniwaves.js",
+    "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/aniwaves.js"
+  },
+  {
     "package": "hianime.at",
     "name": "HiAnime",
     "version": "v0.2.0",
