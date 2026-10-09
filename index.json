@@ -60,6 +60,21 @@
     "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/animerco.js"
   },
   {
+    "package": "site.animesaga",
+    "name": "AnimeSaga",
+    "version": "v1.0.0",
+    "author": "Yomiru",
+    "lang": "en",
+    "license": "MIT",
+    "type": "bangumi",
+    "webSite": "https://animesaga.net",
+    "nsfw": false,
+    "icon": "https://animesaga.net/favicon.ico",
+    "description": "Watch subbed and dubbed anime in HD quality on AnimeSaga",
+    "filename": "animesaga.js",
+    "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/animesaga.js"
+  },
+  {
     "package": "ani.gogo",
     "name": "AniGoGo",
     "version": "v0.0.5",
