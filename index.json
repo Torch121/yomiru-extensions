@@ -1,5 +1,20 @@
 [
   {
+    "package": "site.anime4up",
+    "name": "Anime4up",
+    "version": "v1.0.0",
+    "author": "Yomiru",
+    "lang": "ar",
+    "license": "MIT",
+    "type": "bangumi",
+    "webSite": "https://w1.anime4up.rest",
+    "nsfw": false,
+    "icon": "https://w1.anime4up.rest/wp-content/uploads/2019/03/Anime4up-Icon-1.png",
+    "description": "مشاهدة وتحميل أفضل مسلسلات وأفلام الأنمي المترجمة أون لاين بجودة عالية عبر Anime4up",
+    "filename": "anime4up.js",
+    "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/anime4up.js"
+  },
+  {
     "package": "animegg.org",
     "name": "AnimeGG",
     "version": "v0.1.0",
