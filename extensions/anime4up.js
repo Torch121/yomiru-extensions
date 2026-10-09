@@ -1,6 +1,6 @@
 // ==YomiruExtension==
 // @name         Anime4up
-// @version      v1.0.0
+// @version      v1.0.1
 // @author       Yomiru
 // @lang         ar
 // @license      MIT
@@ -105,20 +105,21 @@ export default class extends Extension {
   _parseGrid(html) {
     const results = [];
     const seenUrls = new Set();
-    const cardRegex =
-      /<div class=['"][^'"]*anime-card[^'"]*['"][\s\S]*?<\/div>\s*<\/div>\s*<\/div>/gi;
-    let match;
+    if (!html || typeof html !== "string") return results;
 
-    while ((match = cardRegex.exec(html)) !== null) {
-      const block = match[0];
+    // Split page into individual anime card blocks for reliable parsing
+    const rawBlocks = html.split(/<div class=['"][^'"]*anime-card-themex[^'"]*['"]/i);
+    const cardBlocks = rawBlocks.length > 1 ? rawBlocks.slice(1) : [];
 
-      // Prefer anime URL over episode URL for catalog navigation
+    for (const block of cardBlocks) {
+      // Extract anime URL
       const animeLinkMatch = block.match(/href=['"]([^'"]*\/anime\/[^'"]*)['"]/i);
       const anyLinkMatch = block.match(/href=['"]([^'"]+)['"]/i);
       const url = animeLinkMatch ? animeLinkMatch[1] : (anyLinkMatch ? anyLinkMatch[1] : "");
       if (!url || seenUrls.has(url)) continue;
       seenUrls.add(url);
 
+      // Extract title
       const titleMatch =
         block.match(/class=['"][^'"]*anime-card-title[^'"]*['"][^>]*title=['"]([^'"]+)['"]/i) ||
         block.match(/<div class=['"][^'"]*anime-card-title[^'"]*['"][^>]*>[\s\S]*?<a[^>]*>([\s\S]*?)<\/a>/i) ||
@@ -129,15 +130,18 @@ export default class extends Extension {
         title = this._cleanText(titleMatch[1]);
       }
 
+      // Extract poster image
       const imgMatch =
         block.match(/data-image=['"]([^'"]+)['"]/i) ||
         block.match(/data-src=['"]([^'"]+)['"]/i) ||
         block.match(/src=['"]([^'"]+)['"]/i);
       const cover = imgMatch ? imgMatch[1] : "";
 
+      // Extract type (TV, Movie, ONA, etc.)
       const typeMatch = block.match(/class=['"][^'"]*anime-card-type[^'"]*['"][^>]*>([\s\S]*?)<\/div>/i);
       const type = typeMatch ? this._cleanText(typeMatch[1]) : "TV";
 
+      // Extract short synopsis
       const descMatch = block.match(/data-content=['"]([^'"]+)['"]/i);
       const desc = descMatch ? this._cleanText(descMatch[1]) : "";
 
@@ -161,7 +165,7 @@ export default class extends Extension {
   async detail(url) {
     let fullUrl = url.startsWith("http") ? url : `${this.baseUrl}${url}`;
 
-    // If episode URL was passed, fetch it first to locate the anime page
+    // If episode URL was passed, fetch it first to locate the parent anime page
     if (fullUrl.includes("/episode/")) {
       const epRes = await this.req(fullUrl);
       const epHtml = typeof epRes === "string" ? epRes : (epRes && epRes.body) || "";
@@ -278,13 +282,14 @@ export default class extends Extension {
     return 1;
   }
 
-  // 5. Episode Streams & Direct MP4s
+  // 5. Episode Streams & Direct Playable Sources
   async watch(url) {
     const fullUrl = url.startsWith("http") ? url : `${this.baseUrl}${url}`;
     const res = await this.req(fullUrl);
     const html = typeof res === "string" ? res : (res && res.body) || "";
 
     const resolvedSources = [];
+    const subtitles = [];
     const seenUrls = new Set();
 
     const addSource = (src) => {
@@ -293,7 +298,7 @@ export default class extends Extension {
       resolvedSources.push(src);
     };
 
-    // A. Parse Download Mirror Table (direct MP4 endpoints like Pixeldrain)
+    // A. Parse Download Mirror Table (direct MP4 endpoints like Pixeldrain and Mp4upload)
     const dlTableRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
     let trMatch;
     while ((trMatch = dlTableRegex.exec(html)) !== null) {
@@ -306,7 +311,6 @@ export default class extends Extension {
       const tdMatches = [...row.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)].map((m) =>
         this._cleanText(m[1])
       );
-      const serverRaw = tdMatches[1] || "Mirror";
       const qualRaw = tdMatches[2] || "Auto";
       const quality = this._normalizeQuality(qualRaw);
 
@@ -337,7 +341,7 @@ export default class extends Extension {
       watchServers.push({ url: sUrl, name: sName });
     }
 
-    // Also look for iframes or fallback data-src
+    // Fallback if data-watch is missing
     if (watchServers.length === 0) {
       const fbSrvRegex = /<li[^>]*data-(?:src|url)=['"]([^'"]+)['"][^>]*>([\s\S]*?)<\/li>/gi;
       let fbMatch;
@@ -352,27 +356,57 @@ export default class extends Extension {
     for (const srv of watchServers) {
       const sUrl = srv.url;
 
-      // 1. Megamax / Share4max multi-quality multi-mirror player
+      // 1. Direct VnxPlayer HLS servers (anime4up1, anime4up2, 4q. shop)
+      if (sUrl.includes("4q.") || sUrl.includes("/mal/") || sUrl.includes("Anime4up-S")) {
+        const vnxRes = await this._extractVnxPlayerStreams(sUrl, fullUrl, srv.name);
+        for (const s of vnxRes.sources) addSource(s);
+        for (const sub of vnxRes.subtitles) {
+          if (!subtitles.some((x) => x.url === sub.url)) subtitles.push(sub);
+        }
+        continue;
+      }
+
+      // 2. Megamax / Share4max multi-quality multi-mirror player
       if (sUrl.includes("share4max.com/iframe/") || sUrl.includes("megamax.me/")) {
         const s4mStreams = await this._extractShare4maxStreams(sUrl);
         for (const s of s4mStreams) addSource(s);
         continue;
       }
 
-      // 2. Videa player with RC4 decryption
+      // 3. Mp4upload embed
+      if (sUrl.includes("mp4upload.com/embed-")) {
+        try {
+          const mpRes = await this.req(sUrl, { headers: { Referer: fullUrl } });
+          const mpHtml = typeof mpRes === "string" ? mpRes : (mpRes && mpRes.body) || "";
+          const mpMatch =
+            mpHtml.match(/player\.src\(\s*\{\s*src:\s*["']([^"']+)["']/i) ||
+            mpHtml.match(/src:\s*["'](https?:\/\/[^"']+\.mp4[^"']*)["']/i);
+          if (mpMatch) {
+            addSource({
+              server: `${srv.name || "Mp4upload"} (Direct MP4)`,
+              url: mpMatch[1],
+              type: "mp4",
+              quality: "FHD",
+              headers: { Referer: sUrl },
+            });
+            continue;
+          }
+        } catch {}
+      }
+
+      // 4. Videa player with RC4 decryption
       if (sUrl.includes("videa.hu/player")) {
         const viStreams = await this._extractVidea(sUrl);
         for (const s of viStreams) addSource(s);
         continue;
       }
 
-      // 3. Standalone Watch Servers
+      // 5. Standalone Watch Servers (if direct media stream)
       let qual = "Auto";
       if (srv.name.includes("FHD") || srv.name.includes("1080")) qual = "FHD";
       else if (srv.name.includes("HD") || srv.name.includes("720")) qual = "HD";
       else if (srv.name.includes("SD") || srv.name.includes("480")) qual = "SD";
 
-      // If it's a direct media file
       if (sUrl.includes(".mp4") || sUrl.includes(".m3u8")) {
         addSource({
           server: srv.name || "Watch Server",
@@ -387,8 +421,20 @@ export default class extends Extension {
     // Sort sources: direct MP4s & HLS first, highest qualities first
     const qualWeights = { FHD: 3, HD: 2, SD: 1, Auto: 0 };
     resolvedSources.sort((a, b) => {
-      const aDirect = a.url.includes("pixeldrain.com/api/file") || a.url.includes(".m3u8") || a.url.includes(".mp4");
-      const bDirect = b.url.includes("pixeldrain.com/api/file") || b.url.includes(".m3u8") || b.url.includes(".mp4");
+      const aDirect =
+        a.url.includes("k1c6x8p.shop") ||
+        a.url.includes("tnmr.org") ||
+        a.url.includes("mp4upload.com") ||
+        a.url.includes("pixeldrain.com/api/file") ||
+        a.url.includes(".m3u8") ||
+        a.url.includes(".mp4");
+      const bDirect =
+        b.url.includes("k1c6x8p.shop") ||
+        b.url.includes("tnmr.org") ||
+        b.url.includes("mp4upload.com") ||
+        b.url.includes("pixeldrain.com/api/file") ||
+        b.url.includes(".m3u8") ||
+        b.url.includes(".mp4");
       if (aDirect && !bDirect) return -1;
       if (!aDirect && bDirect) return 1;
       const wa = qualWeights[a.quality] || 0;
@@ -398,8 +444,47 @@ export default class extends Extension {
 
     return {
       sources: resolvedSources,
-      subtitles: [],
+      subtitles,
     };
+  }
+
+  async _extractVnxPlayerStreams(serverUrl, episodeUrl, serverName) {
+    const sources = [];
+    const subtitles = [];
+    try {
+      const res = await this.req(serverUrl, { headers: { Referer: episodeUrl } });
+      const html = typeof res === "string" ? res : (res && res.body) || "";
+
+      // Extract direct HLS master playlist URL
+      const streamMatch = html.match(/let\s+streamUrl\s*=\s*["']([^"']+)["']/i);
+      if (streamMatch) {
+        sources.push({
+          server: `${serverName || "Anime4up"} (Direct HLS)`,
+          url: streamMatch[1],
+          type: "hls",
+          quality: "FHD",
+          headers: { Referer: serverUrl },
+        });
+      }
+
+      // Extract Arabic subtitle track
+      const tracksMatch = html.match(/const\s+tracks\s*=\s*(\[[\s\S]*?\]);/i);
+      if (tracksMatch) {
+        try {
+          const parsed = JSON.parse(tracksMatch[1]);
+          for (const t of parsed) {
+            if (t.file) {
+              subtitles.push({
+                url: t.file,
+                lang: t.label || "Arabic",
+                default: !!t.default,
+              });
+            }
+          }
+        } catch {}
+      }
+    } catch {}
+    return { sources, subtitles };
   }
 
   async _extractShare4maxStreams(iframeUrl) {
@@ -447,12 +532,24 @@ export default class extends Extension {
         },
       });
 
-      const bodyText = typeof partialRes === "string" ? partialRes : (partialRes && partialRes.body) || "";
-      let streamsData = [];
-      try {
-        const parsed = JSON.parse(bodyText);
-        streamsData = (parsed.props && parsed.props.streams && parsed.props.streams.data) || [];
-      } catch {}
+      // Handle both pre-parsed JSON Object and raw JSON string
+      let parsed = null;
+      if (partialRes && typeof partialRes === "object") {
+        if (partialRes.body && typeof partialRes.body === "string") {
+          try {
+            parsed = JSON.parse(partialRes.body);
+          } catch {}
+        } else if (partialRes.props) {
+          parsed = partialRes;
+        }
+      } else if (typeof partialRes === "string") {
+        try {
+          parsed = JSON.parse(partialRes);
+        } catch {}
+      }
+
+      const streamsData =
+        (parsed && parsed.props && parsed.props.streams && parsed.props.streams.data) || [];
 
       for (const item of streamsData) {
         const qual = this._normalizeQuality(item.label || item.resolution || "Auto");
@@ -463,23 +560,40 @@ export default class extends Extension {
           if (link.startsWith("//")) link = `https:${link}`;
           if (!link.startsWith("http")) continue;
 
-          const driver = m.driver || m.symbol || "Mirror";
+          const driver = (m.driver || m.symbol || "Mirror").toLowerCase();
           const driverTitle = driver.charAt(0).toUpperCase() + driver.slice(1);
 
           // Try resolving direct video stream from mirror
           let directStream = null;
           try {
-            if (link.includes("krakenfiles.com")) {
+            if (driver === "lulustream" || link.includes("lulustream.com")) {
+              const lRes = await this.req(link, { headers: { Referer: iframeUrl } });
+              const lHtml = typeof lRes === "string" ? lRes : (lRes && lRes.body) || "";
+              const unp = this._unpackJs(lHtml) + " " + lHtml;
+              const m3u8Match = unp.match(/["'](https?:[^"']+\.m3u8[^"']*)["']/);
+              if (m3u8Match) {
+                directStream = { url: m3u8Match[1], type: "hls" };
+              }
+            } else if (driver === "mp4upload" || link.includes("mp4upload.com")) {
+              const mpRes = await this.req(link, { headers: { Referer: iframeUrl } });
+              const mpHtml = typeof mpRes === "string" ? mpRes : (mpRes && mpRes.body) || "";
+              const mpMatch =
+                mpHtml.match(/player\.src\(\s*\{\s*src:\s*["']([^"']+)["']/i) ||
+                mpHtml.match(/src:\s*["'](https?:\/\/[^"']+\.mp4[^"']*)["']/i);
+              if (mpMatch) {
+                directStream = { url: mpMatch[1], type: "mp4" };
+              }
+            } else if (driver === "krakenfiles" || link.includes("krakenfiles.com")) {
               const kRes = await this.req(link, { headers: { Referer: iframeUrl } });
               const kHtml = typeof kRes === "string" ? kRes : (kRes && kRes.body) || "";
               const kMatch = kHtml.match(/<source\s+src=['"]([^'"]+)['"]/i);
               if (kMatch) {
                 directStream = { url: kMatch[1], type: "mp4" };
               }
-            } else if (link.includes("lulustream.com") || link.includes("morencius.com") || link.includes("earnvids")) {
-              const lRes = await this.req(link, { headers: { Referer: iframeUrl } });
-              const lHtml = typeof lRes === "string" ? lRes : (lRes && lRes.body) || "";
-              const unp = this._unpackJs(lHtml) + " " + lHtml;
+            } else if (driver === "earnvids" || link.includes("morencius.com")) {
+              const eRes = await this.req(link, { headers: { Referer: iframeUrl } });
+              const eHtml = typeof eRes === "string" ? eRes : (eRes && eRes.body) || "";
+              const unp = this._unpackJs(eHtml) + " " + eHtml;
               const m3u8Match = unp.match(/["'](https?:[^"']+\.m3u8[^"']*)["']/);
               if (m3u8Match) {
                 directStream = { url: m3u8Match[1], type: "hls" };
@@ -495,6 +609,7 @@ export default class extends Extension {
               quality: qual,
               headers: { Referer: link },
             });
+            break; // Resolved a high-speed direct stream for this quality
           }
         }
       }
@@ -634,29 +749,30 @@ export default class extends Extension {
   _unpackJs(source) {
     if (!source || typeof source !== "string") return "";
     const packerRegex =
-      /eval\s*\(\s*function\s*\(\s*p\s*,\s*a\s*,\s*c\s*,\s*k\s*,\s*e\s*,\s*d\s*\)[\s\S]*?\.split\s*\(\s*['"]\|['"]\s*\)\s*\)\s*\)/g;
+      /eval\s*\(\s*function\s*\(\s*p\s*,\s*a\s*,\s*c\s*,\s*k\s*,\s*e\s*,\s*d\s*\)[\s\S]*?\}\(([\s\S]*?)\.split\(['"]\|['"]\)\)\)/g;
     let match;
     let result = source;
 
     while ((match = packerRegex.exec(source)) !== null) {
       try {
-        const fullMatch = match[0];
-        const innerMatch = fullMatch.match(
-          /\}\s*\(\s*(['"][\s\S]*?['"])\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*['"]([\s\S]*?)['"]\.split/
-        );
-        if (innerMatch) {
-          let p = innerMatch[1].slice(1, -1);
-          const a = parseInt(innerMatch[2], 10);
-          let c = parseInt(innerMatch[3], 10);
-          const k = innerMatch[4].split("|");
+        const rawArgs = match[1];
+        const lastComma = rawArgs.lastIndexOf(",'");
+        if (lastComma === -1) continue;
+        const pPart = rawArgs.substring(0, lastComma);
+        const kPart = rawArgs.substring(lastComma + 2);
+        const matchP = pPart.match(/^'([\s\S]*)',\s*(\d+),\s*(\d+)/);
+        if (!matchP) continue;
+        let payload = matchP[1];
+        const a = parseInt(matchP[2], 10);
+        let c = parseInt(matchP[3], 10);
+        const k = kPart.split("|");
 
-          while (c--) {
-            const key = c.toString(a);
-            const replacement = k[c] || key;
-            p = p.replace(new RegExp(`\\b${key}\\b`, "g"), replacement);
+        while (c--) {
+          if (k[c]) {
+            payload = payload.replace(new RegExp(`\\b${c.toString(a)}\\b`, "g"), k[c]);
           }
-          result += "\n" + p;
         }
+        result += "\n" + payload;
       } catch {}
     }
     return result;

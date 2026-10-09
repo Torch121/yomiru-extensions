@@ -2,7 +2,7 @@
 
 Official remote extension catalog for [Yomiru](https://github.com/Torch121/Yomiru).
 
-> **Last Synced**: 2026-10-09 18:54 UTC  
+> **Last Synced**: 2026-10-09 19:19 UTC  
 > **Repository**: `Torch121/yomiru-extensions` (branch: `main`)  
 > **Manifest URL**: `https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/index.json`
 
@@ -10,7 +10,7 @@ Official remote extension catalog for [Yomiru](https://github.com/Torch121/Yomir
 
 | Icon | Extension | Package | Version | Type | Lang | Author | Source |
 | :---: | :--- | :--- | :---: | :---: | :---: | :--- | :---: |
-| <img src="https://w1.anime4up.rest/wp-content/uploads/2019/03/Anime4up-Icon-1.png" width="28" height="28" /> | **Anime4up** | `site.anime4up` | `v1.0.0` | `bangumi` | AR | Yomiru | [anime4up.js](./extensions/anime4up.js) |
+| <img src="https://w1.anime4up.rest/wp-content/uploads/2019/03/Anime4up-Icon-1.png" width="28" height="28" /> | **Anime4up** | `site.anime4up` | `v1.0.1` | `bangumi` | AR | Yomiru | [anime4up.js](./extensions/anime4up.js) |
 | <img src="https://www.animegg.org/images/anime.png" width="28" height="28" /> | **AnimeGG** | `animegg.org` | `v0.1.0` | `bangumi` | EN | Yomiru | [animegg.js](./extensions/animegg.js) |
 | <img src="https://www.animeonsen.xyz/assets/icons/icon-192x192.png" width="28" height="28" /> | **AnimeOnsen** | `xyz.animeonsen` | `v1.0.0` | `bangumi` | ALL | Yomiru | [animeonsen.js](./extensions/animeonsen.js) |
 | <img src="https://det.animerco.org/wp-content/uploads/2024/03/favicon-16x16-1.png" width="28" height="28" /> | **Animerco** | `org.animerco.det` | `v1.0.2` | `bangumi` | AR | Yomiru | [animerco.js](./extensions/animerco.js) |
