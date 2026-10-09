@@ -1,6 +1,6 @@
 // ==YomiruExtension==
 // @name         WitAnime
-// @version      v1.1.0
+// @version      v1.1.1
 // @author       Yomiru
 // @lang         ar
 // @license      MIT
@@ -12,9 +12,16 @@
 // @description  مشاهدة وتحميل أفضل مسلسلات وأفلام الأنمي المترجمة أون لاين بجودة عالية عبر WitAnime
 // ==/YomiruExtension==
 
+const DEFAULT_USER_AGENT =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:133.0) Gecko/20100101 Firefox/133.0";
+
 export default class extends Extension {
   get baseUrl() {
     return "https://witanime.site";
+  }
+
+  get userAgent() {
+    return DEFAULT_USER_AGENT;
   }
 
   constructor() {
@@ -789,7 +796,7 @@ export default class extends Extension {
         headers: {
           Referer: this.baseUrl + "/",
           "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+            DEFAULT_USER_AGENT,
         },
       });
       const html =
@@ -816,7 +823,7 @@ export default class extends Extension {
             headers: {
               Referer: embedUrl,
               "User-Agent":
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+                DEFAULT_USER_AGENT,
             },
           };
         }
@@ -832,7 +839,7 @@ export default class extends Extension {
           headers: {
             Referer: embedUrl,
             "User-Agent":
-              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+              DEFAULT_USER_AGENT,
           },
         };
       }
@@ -847,7 +854,7 @@ export default class extends Extension {
         headers: {
           Referer: embedUrl,
           "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+            DEFAULT_USER_AGENT,
         },
       });
       const html =
@@ -867,7 +874,7 @@ export default class extends Extension {
           headers: {
             Referer: embedUrl,
             "User-Agent":
-              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+              DEFAULT_USER_AGENT,
           },
         };
       }
@@ -948,7 +955,7 @@ export default class extends Extension {
       const res = await this.request(embedUrl, {
         headers: {
           "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+            DEFAULT_USER_AGENT,
           Referer: this.baseUrl + "/",
         },
       });
@@ -994,7 +1001,7 @@ export default class extends Extension {
         fullResponse: true,
         headers: {
           "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+            DEFAULT_USER_AGENT,
           Referer: embedUrl,
         },
       });
@@ -1090,7 +1097,7 @@ export default class extends Extension {
         headers: {
           Referer: "https://videa.hu/",
           "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+            DEFAULT_USER_AGENT,
         },
       };
     } catch (e) {
@@ -1106,7 +1113,7 @@ export default class extends Extension {
         headers: {
           Referer: this.baseUrl + "/",
           "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+            DEFAULT_USER_AGENT,
         },
       });
       const html =
@@ -1126,7 +1133,7 @@ export default class extends Extension {
           headers: {
             Referer: embedUrl,
             "User-Agent":
-              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+              DEFAULT_USER_AGENT,
           },
         };
       }
@@ -1143,7 +1150,7 @@ export default class extends Extension {
         headers: {
           Referer: this.baseUrl + "/",
           "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+            DEFAULT_USER_AGENT,
         },
       });
       const html =
@@ -1163,7 +1170,7 @@ export default class extends Extension {
           headers: {
             Referer: embedUrl,
             "User-Agent":
-              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+              DEFAULT_USER_AGENT,
           },
         };
       }
@@ -1179,7 +1186,7 @@ export default class extends Extension {
       const res = await this.request(embedUrl, {
         headers: {
           "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+            DEFAULT_USER_AGENT,
           Referer: this.baseUrl,
         },
       });
@@ -1213,7 +1220,7 @@ export default class extends Extension {
           headers: {
             Referer: "https://ok.ru/",
             "User-Agent":
-              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+              DEFAULT_USER_AGENT,
           },
         };
       }
@@ -1228,7 +1235,7 @@ export default class extends Extension {
           headers: {
             Referer: "https://ok.ru/",
             "User-Agent":
-              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+              DEFAULT_USER_AGENT,
           },
         };
       }
@@ -1248,7 +1255,7 @@ export default class extends Extension {
           headers: {
             Referer: this.baseUrl + "/",
             "User-Agent":
-              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+              DEFAULT_USER_AGENT,
           },
         });
         const mMatch = html.match(/["']metadataUrl["']\s*:\s*["']([^"']+)["']/i);
@@ -1262,7 +1269,7 @@ export default class extends Extension {
         headers: {
           Referer: embedUrl,
           "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+            DEFAULT_USER_AGENT,
         },
       });
       let meta = typeof res === "string" ? JSON.parse(res) : res;
@@ -1278,7 +1285,7 @@ export default class extends Extension {
           headers: {
             Referer: embedUrl,
             "User-Agent":
-              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+              DEFAULT_USER_AGENT,
           },
         };
       }
@@ -1299,7 +1306,7 @@ export default class extends Extension {
             Accept: "application/json",
             Referer: embedUrl,
             "User-Agent":
-              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+              DEFAULT_USER_AGENT,
           },
         }
       );
@@ -1318,7 +1325,7 @@ export default class extends Extension {
             headers: {
               Referer: embedUrl,
               "User-Agent":
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+                DEFAULT_USER_AGENT,
             },
           };
         }
@@ -1339,7 +1346,7 @@ export default class extends Extension {
       const res = await this.request(embedUrl, {
         headers: {
           "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+            DEFAULT_USER_AGENT,
           Referer: "https://www.mp4upload.com/",
         },
       });
@@ -1370,7 +1377,7 @@ export default class extends Extension {
             headers: {
               Referer: "https://www.mp4upload.com/",
               "User-Agent":
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+                DEFAULT_USER_AGENT,
             },
           };
         }
@@ -1386,7 +1393,7 @@ export default class extends Extension {
         headers: {
           Referer: "https://www.yourupload.com/",
           "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+            DEFAULT_USER_AGENT,
         },
       });
       const html =
@@ -1409,7 +1416,7 @@ export default class extends Extension {
           headers: {
             Referer: embedUrl,
             "User-Agent":
-              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+              DEFAULT_USER_AGENT,
           },
         };
       }
@@ -1423,7 +1430,7 @@ export default class extends Extension {
           headers: {
             Referer: embedUrl,
             "User-Agent":
-              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+              DEFAULT_USER_AGENT,
           },
         };
       }
@@ -1438,7 +1445,7 @@ export default class extends Extension {
         headers: {
           Referer: embedUrl,
           "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+            DEFAULT_USER_AGENT,
         },
       });
       const html =
@@ -1458,7 +1465,7 @@ export default class extends Extension {
           headers: {
             Referer: embedUrl,
             "User-Agent":
-              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+              DEFAULT_USER_AGENT,
           },
         };
       }
@@ -1473,7 +1480,7 @@ export default class extends Extension {
         headers: {
           Referer: embedUrl,
           "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+            DEFAULT_USER_AGENT,
         },
       });
       const html =
@@ -1493,7 +1500,7 @@ export default class extends Extension {
           headers: {
             Referer: embedUrl,
             "User-Agent":
-              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+              DEFAULT_USER_AGENT,
           },
         };
       }
@@ -1517,7 +1524,7 @@ export default class extends Extension {
       const res = await this.request(ucUrl, {
         headers: {
           "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+            DEFAULT_USER_AGENT,
         },
       });
       const html =
@@ -1558,7 +1565,7 @@ export default class extends Extension {
             isDirectVideo: true,
             headers: {
               "User-Agent":
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+                DEFAULT_USER_AGENT,
             },
           };
         }
@@ -1585,7 +1592,7 @@ export default class extends Extension {
           isDirectVideo: true,
           headers: {
             "User-Agent":
-              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+              DEFAULT_USER_AGENT,
           },
         };
       }
@@ -1596,7 +1603,7 @@ export default class extends Extension {
         isDirectVideo: true,
         headers: {
           "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+            DEFAULT_USER_AGENT,
         },
       };
     } catch (e) {}
@@ -1617,7 +1624,7 @@ export default class extends Extension {
         headers: {
           Referer: this.baseUrl + "/",
           "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+            DEFAULT_USER_AGENT,
         },
       });
 
@@ -1632,7 +1639,7 @@ export default class extends Extension {
           Accept: "application/json",
           Referer: embedUrl,
           "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+            DEFAULT_USER_AGENT,
         },
       });
       let init = null;
@@ -1662,7 +1669,7 @@ export default class extends Extension {
           Accept: "application/json",
           Referer: embedUrl,
           "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+            DEFAULT_USER_AGENT,
         },
       });
       let sData = null;
@@ -1732,7 +1739,7 @@ export default class extends Extension {
                 Accept: "application/json",
                 Referer: embedUrl,
                 "User-Agent":
-                  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+                  DEFAULT_USER_AGENT,
               },
             });
             let apiData = null;
@@ -1766,7 +1773,7 @@ export default class extends Extension {
                   headers: dotDirect.headers || {
                     Referer: decryptedUrl,
                     "User-Agent":
-                      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+                      DEFAULT_USER_AGENT,
                   },
                 });
                 if (sources.length >= 2) break;
@@ -1792,7 +1799,7 @@ export default class extends Extension {
                   headers: subSource.headers || {
                     Referer: decryptedUrl,
                     "User-Agent":
-                      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+                      DEFAULT_USER_AGENT,
                   },
                 });
                 if (sources.length >= 2) break;
@@ -1910,7 +1917,7 @@ export default class extends Extension {
         headers: {
           Referer: referer || this.baseUrl + "/",
           "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+            DEFAULT_USER_AGENT,
         },
       });
       const html =
@@ -1930,7 +1937,7 @@ export default class extends Extension {
           headers: {
             Referer: streamUrl,
             "User-Agent":
-              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+              DEFAULT_USER_AGENT,
           },
         };
       }
@@ -1955,7 +1962,7 @@ export default class extends Extension {
       headers: {
         Referer: this.baseUrl + "/",
         "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+          DEFAULT_USER_AGENT,
       },
     });
     const html =
@@ -2029,15 +2036,12 @@ export default class extends Extension {
 
     let manifest = await this.request(fullSourcesUrl, {
       method: "POST",
-      data: {},
       headers: {
-        "Content-Type": "application/json",
         Accept: "application/json",
         "X-CSRF-TOKEN": csrfToken,
         Referer: watchUrl,
         "X-Requested-With": "XMLHttpRequest",
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+        "User-Agent": DEFAULT_USER_AGENT,
       },
     });
 
@@ -2098,15 +2102,15 @@ export default class extends Extension {
     const getServerPriority = (label) => {
       const l = (label || "").toLowerCase();
       if (l.indexOf("videa") !== -1 && l.indexOf("videas") === -1) return 1;
-      if (l.indexOf("mp4upload") !== -1) return 2;
-      if (l.indexOf("ok") !== -1 || l.indexOf("odnoklassniki") !== -1) return 3;
-      if (l.indexOf("videas") !== -1) return 4;
-      if (l.indexOf("google") !== -1 || l.indexOf("gdrive") !== -1 || l.indexOf("drive") !== -1) return 5;
-      if (l.indexOf("soraplay") !== -1) return 6;
-      if (l.indexOf("yonaplay") !== -1 || l.indexOf("dotplay") !== -1) return 7;
-      if (l.indexOf("4shared") !== -1) return 8;
-      if (l.indexOf("mail") !== -1) return 9;
-      if (l.indexOf("yourupload") !== -1) return 10;
+      if (l.indexOf("yonaplay") !== -1 || l.indexOf("dotplay") !== -1) return 2;
+      if (l.indexOf("yourupload") !== -1) return 3;
+      if (l.indexOf("mp4upload") !== -1) return 4;
+      if (l.indexOf("mail") !== -1) return 5;
+      if (l.indexOf("ok") !== -1 || l.indexOf("odnoklassniki") !== -1) return 6;
+      if (l.indexOf("google") !== -1 || l.indexOf("gdrive") !== -1 || l.indexOf("drive") !== -1) return 7;
+      if (l.indexOf("videas") !== -1) return 8;
+      if (l.indexOf("soraplay") !== -1) return 9;
+      if (l.indexOf("4shared") !== -1) return 10;
       if (l.indexOf("streamwish") !== -1 || l.indexOf("awish") !== -1) return 11;
       if (l.indexOf("filemoon") !== -1) return 12;
       if (l.indexOf("hgcloud") !== -1) return 13;
@@ -2177,8 +2181,8 @@ export default class extends Extension {
       // Sort candidates within this quality by server priority
       qualityCandidates.sort((a, b) => a.priority - b.priority);
 
-      // Keep up to 2-3 prioritized servers per quality to prevent rate-limiting while providing server choice
-      const selectedForQuality = qualityCandidates.slice(0, 3);
+      // Keep up to 2 prioritized servers per quality to prevent rate-limiting while providing server choice
+      const selectedForQuality = qualityCandidates.slice(0, 2);
       for (let ci = 0; ci < selectedForQuality.length; ci++) {
         candidates.push(selectedForQuality[ci]);
       }
@@ -2219,27 +2223,32 @@ export default class extends Extension {
 
       try {
         const authHeaders = {
-          "Content-Type": "application/json",
           Accept: "application/json",
           "X-CSRF-TOKEN": csrfToken,
           Referer: watchUrl,
           "X-Requested-With": "XMLHttpRequest",
-          "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+          "User-Agent": DEFAULT_USER_AGENT,
         };
 
         // 1. Authorize token via POST stream-source or download-source
         const sourcePath = item.isDownload
           ? "/watch/download-source/"
           : "/watch/stream-source/";
+        let authRes = null;
         try {
           console.log("[WitAnime] Authorizing source token for " + item.label + "...");
-          await this.request(this.baseUrl + sourcePath + item.token, {
+          authRes = await this.request(this.baseUrl + sourcePath + item.token, {
             method: "POST",
-            data: {},
             headers: authHeaders,
           });
         } catch (_) {}
+
+        let authData = {};
+        if (authRes) {
+          try {
+            authData = typeof authRes === "string" ? JSON.parse(authRes) : authRes;
+          } catch (_) {}
+        }
 
         // 2. Resolve redirect location via GET stream-gate or download-gate
         const gatePath = item.isDownload
@@ -2250,35 +2259,51 @@ export default class extends Extension {
         let streamUrl = "";
 
         try {
+          const gateHeaders = {
+            "User-Agent": DEFAULT_USER_AGENT,
+            "Upgrade-Insecure-Requests": "1",
+            "Sec-Fetch-Dest": "iframe",
+            "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-Site": "same-origin",
+          };
+          if (item.isDownload) {
+            gateHeaders["Referer"] = watchUrl;
+          } else if (authData && authData.referrerPolicy === "origin") {
+            gateHeaders["Referer"] = this.baseUrl + "/";
+          }
+
           const gateRes = await this.request(gateUrl, {
             followRedirects: false,
             fullResponse: true,
-            headers: {
-              Referer: watchUrl,
-              "User-Agent":
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
-            },
+            headers: gateHeaders,
           });
 
-          if (gateRes && typeof gateRes === "object") {
-            const h = gateRes.headers || {};
+          let resObj = gateRes;
+          if (typeof resObj === "string") {
+            try {
+              resObj = JSON.parse(resObj);
+            } catch (_) {}
+          }
+
+          if (resObj && typeof resObj === "object") {
+            const h = resObj.headers || {};
             const loc =
               h.location ||
               h.Location ||
-              gateRes.url ||
+              resObj.url ||
               "";
             if (loc && loc !== gateUrl) {
               streamUrl =
                 loc.indexOf("http") === 0 ? loc : this.baseUrl + loc;
-            } else if (gateRes.body && typeof gateRes.body === "string") {
+            } else if (resObj.body && typeof resObj.body === "string") {
               const refreshMatch =
-                gateRes.body.match(/http-equiv=["']refresh["'][^>]*content=["'][^"']*url=['"]([^'"]+)['"]/i) ||
-                gateRes.body.match(/<a[^>]+href=["']([^"']+)["'][^>]*>Redirecting to/i);
+                resObj.body.match(/http-equiv=["']refresh["'][^>]*content=["'][^"']*url=['"]([^'"]+)['"]/i) ||
+                resObj.body.match(/<a[^>]+href=["']([^"']+)["'][^>]*>Redirecting to/i);
               if (refreshMatch && refreshMatch[1]) {
                 const rUrl = refreshMatch[1];
                 streamUrl = rUrl.indexOf("http") === 0 ? rUrl : this.baseUrl + rUrl;
               } else {
-                const m = gateRes.body.match(
+                const m = resObj.body.match(
                   /https?:\/\/[^"'\s<>]+\.(?:m3u8|mp4)[^"'\s<>]*/i
                 );
                 if (m) streamUrl = m[0];
@@ -2327,7 +2352,7 @@ export default class extends Extension {
         const streamHeaders = {
           Referer: watchUrl,
           "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+            DEFAULT_USER_AGENT,
         };
 
         // 4. Resolve direct video stream
