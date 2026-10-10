@@ -240,11 +240,26 @@ export default class extends Extension {
     return [];
   }
 
-  /// Title search on AnimeOnsen
+  /// Title search on AnimeOnsen with Japanese-first fallback
   async search(kw, page) {
-    var clean = (kw || "").trim();
-    if (!clean) return [];
+    var clean = "";
+    if (typeof kw === "object" && kw !== null) {
+      var jp = (kw.japaneseTitle || kw.nativeTitle || kw.japanese || "").trim();
+      var en = (kw.englishTitle || kw.english || kw.query || "").trim();
+      if (jp) {
+        var jpResults = await this._rawSearch(jp);
+        if (jpResults && jpResults.length > 0) return jpResults;
+      }
+      clean = en || jp;
+    } else {
+      clean = (kw || "").trim();
+    }
 
+    if (!clean) return [];
+    return this._rawSearch(clean);
+  }
+
+  async _rawSearch(clean) {
     try {
       var token = await this.getValidToken();
       var url = this.apiBase + "/search/" + encodeURIComponent(clean);

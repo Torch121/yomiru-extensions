@@ -86,17 +86,39 @@ export default class extends Extension {
     return this._parseGrid(html);
   }
 
-  // 3. Search Anime
+  // 3. Search Anime (Japanese-first with English fallback)
   async search(kw, page) {
     const p = Math.max(1, page || 1);
-    if (!kw || kw.trim() === "") {
+    let queryToSearch = "";
+
+    if (typeof kw === "object" && kw !== null) {
+      const jp = kw.japaneseTitle || kw.nativeTitle || kw.japanese || "";
+      const en = kw.englishTitle || kw.english || kw.query || "";
+
+      // Japanese-first search attempt
+      if (jp && jp.trim()) {
+        const jpResults = await this._rawSearch(jp.trim(), p);
+        if (jpResults && jpResults.length > 0) {
+          return jpResults;
+        }
+      }
+      queryToSearch = en || jp || "";
+    } else {
+      queryToSearch = String(kw || "").trim();
+    }
+
+    if (!queryToSearch) {
       return this.popular(p);
     }
 
+    return this._rawSearch(queryToSearch, p);
+  }
+
+  async _rawSearch(term, p) {
     const path =
       p > 1
-        ? `/page/${p}/?s=${encodeURIComponent(kw.trim())}`
-        : `/?s=${encodeURIComponent(kw.trim())}`;
+        ? `/page/${p}/?s=${encodeURIComponent(term.trim())}`
+        : `/?s=${encodeURIComponent(term.trim())}`;
     const res = await this.req(path);
     const html = typeof res === "string" ? res : (res && res.body) || "";
     return this._parseGrid(html);
@@ -418,25 +440,13 @@ export default class extends Extension {
       }
     }
 
-    // Sort sources: direct MP4s & HLS first, highest qualities first
-    const qualWeights = { FHD: 3, HD: 2, SD: 1, Auto: 0 };
+    // Sort sources: HLS streams first, followed by direct MP4 fallbacks, highest qualities first
+    const qualWeights = { FHD: 4, "1080p": 4, HD: 3, "720p": 3, SD: 2, "480p": 2, "360p": 1, Auto: 0 };
     resolvedSources.sort((a, b) => {
-      const aDirect =
-        a.url.includes("k1c6x8p.shop") ||
-        a.url.includes("tnmr.org") ||
-        a.url.includes("mp4upload.com") ||
-        a.url.includes("pixeldrain.com/api/file") ||
-        a.url.includes(".m3u8") ||
-        a.url.includes(".mp4");
-      const bDirect =
-        b.url.includes("k1c6x8p.shop") ||
-        b.url.includes("tnmr.org") ||
-        b.url.includes("mp4upload.com") ||
-        b.url.includes("pixeldrain.com/api/file") ||
-        b.url.includes(".m3u8") ||
-        b.url.includes(".mp4");
-      if (aDirect && !bDirect) return -1;
-      if (!aDirect && bDirect) return 1;
+      const aHls = a.type === "hls" || a.url.includes(".m3u8");
+      const bHls = b.type === "hls" || b.url.includes(".m3u8");
+      if (aHls && !bHls) return -1;
+      if (!aHls && bHls) return 1;
       const wa = qualWeights[a.quality] || 0;
       const wb = qualWeights[b.quality] || 0;
       return wb - wa;

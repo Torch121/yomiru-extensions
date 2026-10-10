@@ -235,6 +235,21 @@ export default class extends Extension {
   }
 
   async search(kw, page, filter) {
+    if (typeof kw === "object" && kw !== null) {
+      const jp = kw.japaneseTitle || kw.nativeTitle || kw.japanese || "";
+      const en = kw.englishTitle || kw.english || kw.query || "";
+      if (jp && jp.trim()) {
+        const jpResults = await this._rawSearch(jp.trim(), page, filter);
+        if (jpResults && jpResults.length > 0) {
+          return jpResults;
+        }
+      }
+      return this._rawSearch(en || jp || "", page, filter);
+    }
+    return this._rawSearch(kw, page, filter);
+  }
+
+  async _rawSearch(kw, page, filter) {
     const cleanKw = (kw || "").trim();
     if (!cleanKw) {
       return this.latest(page);
@@ -327,12 +342,20 @@ export default class extends Extension {
 
       return {
         name,
+        number: chNum,
         url: `/manga/${slug}/chapter/${chNum}?id=${ch.id}`,
       };
     });
 
+    chapters.sort((a, b) => {
+      const na = typeof a.number === "number" ? a.number : parseFloat(a.number);
+      const nb = typeof b.number === "number" ? b.number : parseFloat(b.number);
+      if (!isNaN(na) && !isNaN(nb)) return na - nb;
+      return String(a.name || "").localeCompare(String(b.name || ""), undefined, { numeric: true });
+    });
+
     const reverseSetting = await this.getSetting("reverseChaptersOrderMangaTime");
-    if (reverseSetting !== "false") {
+    if (reverseSetting === "false") {
       chapters.reverse();
     }
 

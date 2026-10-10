@@ -159,16 +159,34 @@ export default class extends Extension {
     return this._parseAnimeItems(items, base);
   }
 
-  // 3. Search Anime
+  // 3. Search Anime with Japanese-first fallback
   async search(kw, page) {
     const p = Math.max(1, page || 1);
-    const base = await this.getBaseUrl();
-    if (!kw || kw.trim() === "") {
+    let queryToSearch = "";
+
+    if (typeof kw === "object" && kw !== null) {
+      const jp = kw.japaneseTitle || kw.nativeTitle || kw.japanese || "";
+      const en = kw.englishTitle || kw.english || kw.query || "";
+      if (jp && jp.trim()) {
+        const jpResults = await this._rawSearch(jp.trim(), p);
+        if (jpResults && jpResults.length > 0) {
+          return jpResults;
+        }
+      }
+      queryToSearch = en || jp || "";
+    } else {
+      queryToSearch = (kw || "").trim();
+    }
+
+    if (!queryToSearch) {
       return this.popular(p);
     }
 
-    const query = kw.trim();
+    return this._rawSearch(queryToSearch, p);
+  }
 
+  async _rawSearch(query, p) {
+    const base = await this.getBaseUrl();
     if (p === 1) {
       try {
         const searchRes = await this.req(`/api/anime/search?q=${encodeURIComponent(query)}`);

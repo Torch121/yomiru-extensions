@@ -68,17 +68,37 @@ export default class extends Extension {
     return this._parseGrid(html);
   }
 
-  // 3. Search Anime
+  // 3. Search Anime with Japanese-first fallback
   async search(kw, page) {
     const p = Math.max(1, page || 1);
-    if (!kw || kw.trim() === "") {
+    let queryToSearch = "";
+
+    if (typeof kw === "object" && kw !== null) {
+      const jp = kw.japaneseTitle || kw.nativeTitle || kw.japanese || "";
+      const en = kw.englishTitle || kw.english || kw.query || "";
+      if (jp && jp.trim()) {
+        const jpResults = await this._rawSearch(jp.trim(), p);
+        if (jpResults && jpResults.length > 0) {
+          return jpResults;
+        }
+      }
+      queryToSearch = en || jp || "";
+    } else {
+      queryToSearch = String(kw || "").trim();
+    }
+
+    if (!queryToSearch) {
       return this.popular(p);
     }
 
+    return this._rawSearch(queryToSearch, p);
+  }
+
+  async _rawSearch(term, p) {
     const path =
       p > 1
-        ? `/page/${p}/?s=${encodeURIComponent(kw.trim())}`
-        : `/?s=${encodeURIComponent(kw.trim())}`;
+        ? `/page/${p}/?s=${encodeURIComponent(term.trim())}`
+        : `/?s=${encodeURIComponent(term.trim())}`;
     const res = await this.req(path);
     const html = typeof res === "string" ? res : (res && res.body) || "";
     return this._parseGrid(html);
@@ -596,6 +616,12 @@ export default class extends Extension {
         }
       } catch {}
     }
+
+    resolvedSources.sort((a, b) => {
+      const aHls = (a.type === 'hls' || (a.url && a.url.includes('.m3u8'))) ? 1 : 0;
+      const bHls = (b.type === 'hls' || (b.url && b.url.includes('.m3u8'))) ? 1 : 0;
+      return bHls - aHls;
+    });
 
     return {
       sources: resolvedSources,

@@ -78,6 +78,23 @@ export default class extends Extension {
   }
 
   async search(kw, page) {
+    let queryStr = "";
+    if (typeof kw === "object" && kw !== null) {
+      const jp = kw.japaneseTitle || kw.nativeTitle || kw.japanese || "";
+      const en = kw.englishTitle || kw.english || kw.query || "";
+      if (jp && jp.trim()) {
+        const jpResults = await this._rawSearch(jp.trim(), page);
+        if (jpResults && jpResults.length > 0) return jpResults;
+      }
+      queryStr = en || jp || "";
+    } else {
+      queryStr = (kw || "").trim();
+    }
+    if (!queryStr) return this.popular(page);
+    return this._rawSearch(queryStr, page);
+  }
+
+  async _rawSearch(queryStr, page) {
     const query = `
       query FastSearch($query: String, $limit: Int) {
         catalogAnime(filter: { query: $query }, limit: $limit) {
@@ -99,7 +116,7 @@ export default class extends Extension {
       data: {
         query,
         variables: {
-          query: kw,
+          query: queryStr,
           limit: 15,
         },
       },
@@ -230,10 +247,18 @@ export default class extends Extension {
     );
 
     const sources = sourcesRes?.sources || [];
+    const sortedSources = [...sources].sort((a, b) => {
+      const aHls = (a.type?.includes("mpegurl") || a.url?.includes(".m3u8")) ? 1 : 0;
+      const bHls = (b.type?.includes("mpegurl") || b.url?.includes(".m3u8")) ? 1 : 0;
+      return bHls - aHls;
+    });
+
     let streamUrl = "";
-    if (sources.length > 0) {
-      streamUrl = sources[0].url || "";
+    if (sortedSources.length > 0) {
+      streamUrl = sortedSources[0].url || "";
     }
+
+    const isHls = streamUrl.includes(".m3u8") || (sortedSources[0]?.type?.includes("mpegurl") ?? false);
 
     const subtitles = (sourcesRes?.tracks || [])
       .filter((t) => t.url)
@@ -247,7 +272,7 @@ export default class extends Extension {
     };
 
     return {
-      type: "hls",
+      type: isHls ? "hls" : "mp4",
       url: streamUrl,
       headers: reqHeaders,
       subtitles,

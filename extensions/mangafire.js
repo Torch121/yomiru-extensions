@@ -350,6 +350,21 @@ export default class extends Extension {
   }
 
   async search(kw, page = 1) {
+    if (typeof kw === "object" && kw !== null) {
+      const jp = kw.japaneseTitle || kw.nativeTitle || kw.japanese || "";
+      const en = kw.englishTitle || kw.english || kw.query || "";
+      if (jp && jp.trim()) {
+        const jpResults = await this._rawSearch(jp.trim(), page);
+        if (jpResults && jpResults.length > 0) {
+          return jpResults;
+        }
+      }
+      return this._rawSearch(en || jp || "", page);
+    }
+    return this._rawSearch(kw, page);
+  }
+
+  async _rawSearch(kw, page = 1) {
     const res = await this.apiGet("/titles", {
       keyword: kw,
       page,
@@ -383,9 +398,9 @@ export default class extends Extension {
     });
     const chapItems = (chapRes && chapRes.items) || [];
 
-    // If there are more pages, fetch up to 20 additional pages in parallel
+    // If there are more pages, fetch all remaining pages in parallel
     if (chapRes && chapRes.meta && chapRes.meta.lastPage > 1) {
-      const maxPages = Math.min(chapRes.meta.lastPage, 20);
+      const maxPages = chapRes.meta.lastPage;
       const pagePromises = [];
       for (let p = 2; p <= maxPages; p++) {
         pagePromises.push(

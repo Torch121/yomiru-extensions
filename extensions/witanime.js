@@ -475,6 +475,22 @@ export default class extends Extension {
   }
 
   async search(kw, page) {
+    if (typeof kw === "object" && kw !== null) {
+      const jp = kw.japaneseTitle || kw.nativeTitle || kw.japanese || "";
+      const en = kw.englishTitle || kw.english || kw.query || "";
+      if (jp && jp.trim()) {
+        const jpResults = await this._searchKeywords(jp.trim(), page);
+        if (jpResults && jpResults.length > 0) {
+          return jpResults;
+        }
+      }
+      return this._searchKeywords(en || jp || "", page);
+    }
+    return this._searchKeywords(kw, page);
+  }
+
+  async _searchKeywords(kw, page) {
+    if (!kw || typeof kw !== "string") return [];
     const p = page || 1;
     let results = await this._searchOnce(kw, p);
     if (results && results.length > 0) return results;
@@ -2391,6 +2407,12 @@ export default class extends Extension {
         continue;
       }
     }
+
+    sources.sort((a, b) => {
+      const aHls = a.type === "hls" || (a.url && a.url.indexOf(".m3u8") !== -1) ? 1 : 0;
+      const bHls = b.type === "hls" || (b.url && b.url.indexOf(".m3u8") !== -1) ? 1 : 0;
+      return bHls - aHls;
+    });
 
     console.log("[WitAnime] watch() completed. Returning " + sources.length + " playable stream source(s).");
     return {

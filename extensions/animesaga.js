@@ -223,14 +223,33 @@ export default class extends Extension {
     }
   }
 
-  // 3. Search Anime
+  // 3. Search Anime with Japanese-first fallback
   async search(kw, page) {
     const p = Math.max(1, page || 1);
-    const queryStr = (kw || "").trim();
+    let queryStr = "";
+
+    if (typeof kw === "object" && kw !== null) {
+      const jp = kw.japaneseTitle || kw.nativeTitle || kw.japanese || "";
+      const en = kw.englishTitle || kw.english || kw.query || "";
+      if (jp && jp.trim()) {
+        const jpResults = await this._rawSearch(jp.trim(), p);
+        if (jpResults && jpResults.length > 0) {
+          return jpResults;
+        }
+      }
+      queryStr = en || jp || "";
+    } else {
+      queryStr = (kw || "").trim();
+    }
+
     if (!queryStr) {
       return this.popular(p);
     }
 
+    return this._rawSearch(queryStr, p);
+  }
+
+  async _rawSearch(queryStr, p) {
     // Try fast dedicated search endpoint first
     try {
       const res = await this.req(
@@ -579,6 +598,12 @@ export default class extends Extension {
         `No playable video stream found for ${animeTitle || "anime ID " + animeId} Episode ${epNum}`
       );
     }
+
+    resolvedSources.sort((a, b) => {
+      const aHls = (a.type === 'hls' || (a.url && a.url.includes('.m3u8'))) ? 1 : 0;
+      const bHls = (b.type === 'hls' || (b.url && b.url.includes('.m3u8'))) ? 1 : 0;
+      return bHls - aHls;
+    });
 
     return {
       sources: resolvedSources,

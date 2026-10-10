@@ -148,9 +148,26 @@ export default class extends Extension {
       return this._parseSeriesList(html);
     }
 
-    // Standard keyword search
-    if (kw && kw.trim() !== "") {
-      const res = await this.req(`/search/?q=${encodeURIComponent(kw.trim())}`);
+    // Standard keyword search with Japanese-first fallback
+    let queryToSearch = "";
+    if (typeof kw === "object" && kw !== null) {
+      const jp = kw.japaneseTitle || kw.nativeTitle || kw.japanese || "";
+      const en = kw.englishTitle || kw.english || kw.query || "";
+      if (jp && jp.trim()) {
+        const res = await this.req(`/search/?q=${encodeURIComponent(jp.trim())}`);
+        const html = typeof res === "string" ? res : res.html || "";
+        const jpResults = this._parseSearchList(html);
+        if (jpResults && jpResults.length > 0) {
+          return jpResults;
+        }
+      }
+      queryToSearch = en || jp || "";
+    } else {
+      queryToSearch = String(kw || "").trim();
+    }
+
+    if (queryToSearch && queryToSearch !== "") {
+      const res = await this.req(`/search/?q=${encodeURIComponent(queryToSearch)}`);
       const html = typeof res === "string" ? res : res.html || "";
       return this._parseSearchList(html);
     }
@@ -336,8 +353,10 @@ export default class extends Extension {
       throw new Error(`Video file stream not found in player embed ${embedId}`);
     }
 
-    // Prefer highest available resolution (1080p > 720p > 480p > 360p)
+    // Prioritize HLS manifests first, then highest resolution MP4
+    const hlsSource = sources.find((s) => s.file.includes('.m3u8') || s.file.includes('/hls/'));
     const bestSource =
+      hlsSource ||
       sources.find((s) => s.label === "1080p") ||
       sources.find((s) => s.label === "720p") ||
       sources.find((s) => s.label === "480p") ||
@@ -347,8 +366,10 @@ export default class extends Extension {
       ? bestSource.file
       : `https://www.animegg.org${bestSource.file}`;
 
+    const isHls = streamUrl.includes(".m3u8") || streamUrl.includes("/hls/");
+
     return {
-      type: "mp4",
+      type: isHls ? "hls" : "mp4",
       url: streamUrl,
       headers: {
         Referer: `https://www.animegg.org/embed/${embedId}`,

@@ -215,6 +215,25 @@ export default class extends Extension {
 
   // 3. Search Anime by Keyword & Advanced Filters
   async search(kw, page, filter) {
+    let queryToSearch = "";
+    if (typeof kw === "object" && kw !== null) {
+      const jp = kw.japaneseTitle || kw.nativeTitle || kw.japanese || "";
+      const en = kw.englishTitle || kw.english || kw.query || "";
+      if (jp && jp.trim()) {
+        const jpResults = await this._rawSearch(jp.trim(), page, filter);
+        if (jpResults && jpResults.length > 0) {
+          return jpResults;
+        }
+      }
+      queryToSearch = en || jp || "";
+    } else {
+      queryToSearch = (kw || "").trim();
+    }
+
+    return this._rawSearch(queryToSearch, page, filter);
+  }
+
+  async _rawSearch(kw, page, filter) {
     let url;
     if (filter && Object.keys(filter).length > 0) {
       const params = [];

@@ -159,9 +159,24 @@ export default class extends Extension {
 
   // 3. Search Manga
   async search(kw, page, filter) {
+    if (typeof kw === "object" && kw !== null) {
+      const jp = kw.japaneseTitle || kw.nativeTitle || kw.japanese || "";
+      const en = kw.englishTitle || kw.english || kw.query || "";
+      if (jp && jp.trim()) {
+        const jpResults = await this._rawSearch(jp.trim(), page, filter);
+        if (jpResults && jpResults.length > 0) {
+          return jpResults;
+        }
+      }
+      return this._rawSearch(en || jp || "", page, filter);
+    }
+    return this._rawSearch(kw, page, filter);
+  }
+
+  async _rawSearch(kw, page, filter) {
     const base = await this.getBaseUrl();
     const p = page || 1;
-    const cleanKw = kw ? encodeURIComponent(kw.trim()) : "";
+    const cleanKw = kw ? encodeURIComponent(String(kw).trim()) : "";
     const url = `/?act=search&f[status]=all&f[sortby]=lastest-chap&f[keyword]=${cleanKw}&page=${p}`;
 
     const res = await this.req(url);

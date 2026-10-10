@@ -79,7 +79,22 @@ export default class extends Extension {
   }
 
   async search(kw, page) {
-    const res = await this.req(`/?search=${kw}`);
+    if (typeof kw === "object" && kw !== null) {
+      const jp = kw.japaneseTitle || kw.nativeTitle || kw.japanese || "";
+      const en = kw.englishTitle || kw.english || kw.query || "";
+      if (jp && jp.trim()) {
+        const jpResults = await this._rawSearch(jp.trim(), page);
+        if (jpResults && jpResults.length > 0) {
+          return jpResults;
+        }
+      }
+      return this._rawSearch(en || jp || "", page);
+    }
+    return this._rawSearch(kw, page);
+  }
+
+  async _rawSearch(kw, page) {
+    const res = await this.req(`/?search=${encodeURIComponent(kw || "")}`);
     const searchList = await this.querySelectorAll(res, "#book_list .item");
     const result = await Promise.all(
       searchList.map(async (element) => {
