@@ -254,6 +254,7 @@ export default class extends Extension {
 
     const rawEpisodes = Array.isArray(data.episodes) ? data.episodes : [];
     const episodeUrls = [];
+    const sourceParam = data.source || (target.isAnilist ? "anilist" : "settlar");
 
     if (rawEpisodes.length > 0) {
       for (const ep of rawEpisodes) {
@@ -264,14 +265,14 @@ export default class extends Extension {
         }
         episodeUrls.push({
           name: epName,
-          url: `${base}/anime/${target.id}/${num}`,
+          url: `${base}/anime/${target.id}/${num}?source=${sourceParam}`,
         });
       }
     } else {
       // Movie / single video fallback
       episodeUrls.push({
         name: "Full Movie",
-        url: `${base}/anime/${target.id}/1`,
+        url: `${base}/anime/${target.id}/1?source=${sourceParam}`,
       });
     }
 
@@ -295,10 +296,16 @@ export default class extends Extension {
     let animeId = epMatch ? epMatch[1] : null;
     let epNum = epMatch ? parseFloat(epMatch[2]) : 1;
 
+    let isAnilist = false;
+    if (url.includes("/ani/")) {
+      isAnilist = true;
+    }
+
     if (!animeId) {
       const altMatch = this._extractId(url);
       if (altMatch) {
         animeId = altMatch.id;
+        if (altMatch.isAnilist) isAnilist = true;
       }
     }
 
@@ -309,10 +316,39 @@ export default class extends Extension {
     const prefLang = (await this.getSetting("preferred_audio")) || "sub";
     const lang = prefLang === "dub" ? "dub" : "sub";
 
-    // 1. Fetch playback bootstrap
-    const bootstrapUrl = `/api/anime/playback-bootstrap/settlar/${animeId}?ep=${epNum}&lang=${lang}&backup=1`;
-    const bootRes = await this.req(bootstrapUrl);
-    const bootData = this.parseJson(bootRes) || {};
+    // Detect source type: query parameter > URL format > ID magnitude
+    const sourceParamMatch = url.match(/[?&]source=([a-z0-9_-]+)/i);
+    const explicitSource = sourceParamMatch ? sourceParamMatch[1].toLowerCase() : (isAnilist ? "anilist" : null);
+
+    const sourceCandidates = [];
+    if (explicitSource === "anilist") {
+      sourceCandidates.push("anilist", "settlar");
+    } else if (explicitSource === "settlar") {
+      sourceCandidates.push("settlar", "anilist");
+    } else {
+      const numId = parseInt(animeId, 10);
+      if (!isNaN(numId) && numId >= 20000) {
+        sourceCandidates.push("anilist", "settlar");
+      } else {
+        sourceCandidates.push("settlar", "anilist");
+      }
+    }
+
+    // 1. Fetch playback bootstrap with resilient source fallback
+    let bootData = null;
+    for (const prefix of sourceCandidates) {
+      try {
+        const bootstrapUrl = `/api/anime/playback-bootstrap/${prefix}/${animeId}?ep=${epNum}&lang=${lang}&backup=1`;
+        const bootRes = await this.req(bootstrapUrl);
+        const parsed = this.parseJson(bootRes);
+        if (parsed && !parsed.error && (parsed.backupEmbed || parsed.settlarSelection || parsed.anipmPackages || parsed.core)) {
+          bootData = parsed;
+          break;
+        }
+      } catch (err) {}
+    }
+
+    bootData = bootData || {};
 
     const resolvedSources = [];
     let subtitles = [];
