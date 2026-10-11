@@ -364,17 +364,7 @@ export default class extends Extension {
       throw new Error(`Could not locate BitTorrent or Magnet links for ${path}`);
     }
 
-    const primaryUrl = magnetUri || torrentDownloadUrl;
-
     const sources = [];
-    if (magnetUri) {
-      sources.push({
-        name: "Magnet Swarm (P2P)",
-        url: magnetUri,
-        type: "torrent",
-        quality: "Auto",
-      });
-    }
     if (torrentDownloadUrl) {
       sources.push({
         name: "Direct .torrent Metainfo",
@@ -383,6 +373,16 @@ export default class extends Extension {
         quality: "Auto",
       });
     }
+    if (magnetUri) {
+      sources.push({
+        name: "Magnet Swarm (P2P)",
+        url: magnetUri,
+        type: "torrent",
+        quality: "Auto",
+      });
+    }
+
+    const primaryUrl = torrentDownloadUrl || magnetUri;
 
     return {
       type: "torrent",
