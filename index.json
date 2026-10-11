@@ -225,6 +225,21 @@
     "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/mangatime.js"
   },
   {
+    "package": "si.nyaa",
+    "name": "Nyaa",
+    "version": "v1.0.0",
+    "author": "Yomiru",
+    "lang": "all",
+    "license": "MIT",
+    "type": "bangumi",
+    "webSite": "https://nyaa.si",
+    "nsfw": false,
+    "icon": "https://nyaa.si/static/favicon.png",
+    "description": "Anime torrent indexer providing high-speed BitTorrent and Magnet streams from Nyaa.si.",
+    "filename": "nyaa.js",
+    "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/nyaa.js"
+  },
+  {
     "package": "site.witanime",
     "name": "WitAnime",
     "version": "v1.1.1",
