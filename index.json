@@ -225,6 +225,21 @@
     "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/mangatime.js"
   },
   {
+    "package": "to.nekobt",
+    "name": "NekoBT",
+    "version": "v1.0.0",
+    "author": "Yomiru",
+    "lang": "all",
+    "license": "MIT",
+    "type": "bangumi",
+    "webSite": "https://nekobt.to",
+    "nsfw": false,
+    "icon": "https://nekobt.to/cdn/pfp/null/64",
+    "description": "Anime torrent indexer providing high-speed BitTorrent and Magnet streams from NekoBT (nekobt.to).",
+    "filename": "nekobt.js",
+    "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/nekobt.js"
+  },
+  {
     "package": "si.nyaa",
     "name": "Nyaa",
     "version": "v1.0.0",

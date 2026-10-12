@@ -2,7 +2,7 @@
 
 Official remote extension catalog for [Yomiru](https://github.com/Torch121/Yomiru).
 
-> **Last Synced**: 2026-10-12 14:51 UTC  
+> **Last Synced**: 2026-10-12 19:08 UTC  
 > **Repository**: `Torch121/yomiru-extensions` (branch: `main`)  
 > **Manifest URL**: `https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/index.json`
 
@@ -25,6 +25,7 @@ Official remote extension catalog for [Yomiru](https://github.com/Torch121/Yomir
 | <img src="https://mangafire.to/assets/mangafire/favicon.svg" width="28" height="28" /> | **MangaFire** | `mangafire.to` | `v1.0.2` | `manga` | ALL | Yomiru | [mangafire.js](./extensions/mangafire.js) |
 | <img src="https://mangakatana.com/static/img/fav.png" width="28" height="28" /> | **Mangakatana** | `mangakatana.com` | `v0.0.2` | `manga` | EN | shashankx86 | [mangakatana.js](./extensions/mangakatana.js) |
 | <img src="https://mangatime.org/brand/v2/icons/icon-192.png" width="28" height="28" /> | **MangaTime** | `mangatime.org` | `v1.0.2` | `manga` | AR | Yomiru | [mangatime.js](./extensions/mangatime.js) |
+| <img src="https://nekobt.to/cdn/pfp/null/64" width="28" height="28" /> | **NekoBT** | `to.nekobt` | `v1.0.0` | `bangumi` | ALL | Yomiru | [nekobt.js](./extensions/nekobt.js) |
 | <img src="https://nyaa.si/static/favicon.png" width="28" height="28" /> | **Nyaa** | `si.nyaa` | `v1.0.0` | `bangumi` | ALL | Yomiru | [nyaa.js](./extensions/nyaa.js) |
 | <img src="https://witanime.site/assets/images/favicon.ico" width="28" height="28" /> | **WitAnime** | `site.witanime` | `v1.1.1` | `bangumi` | AR | Yomiru | [witanime.js](./extensions/witanime.js) |
 
