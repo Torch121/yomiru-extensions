@@ -255,6 +255,21 @@
     "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/nyaa.js"
   },
   {
+    "package": "org.tsukihime",
+    "name": "TsukiHime",
+    "version": "v1.0.0",
+    "author": "Yomiru",
+    "lang": "all",
+    "license": "MIT",
+    "type": "bangumi",
+    "webSite": "https://tsukihime.org",
+    "nsfw": false,
+    "icon": "https://tsukihime.org/favicon.ico",
+    "description": "Anime torrent indexer providing high-speed BitTorrent and Magnet streams from TsukiHime (tsukihime.org).",
+    "filename": "tsukihime.js",
+    "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/tsukihime.js"
+  },
+  {
     "package": "site.witanime",
     "name": "WitAnime",
     "version": "v1.1.1",

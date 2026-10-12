@@ -2,7 +2,7 @@
 
 Official remote extension catalog for [Yomiru](https://github.com/Torch121/Yomiru).
 
-> **Last Synced**: 2026-10-12 19:08 UTC  
+> **Last Synced**: 2026-10-12 21:38 UTC  
 > **Repository**: `Torch121/yomiru-extensions` (branch: `main`)  
 > **Manifest URL**: `https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/index.json`
 
@@ -27,6 +27,7 @@ Official remote extension catalog for [Yomiru](https://github.com/Torch121/Yomir
 | <img src="https://mangatime.org/brand/v2/icons/icon-192.png" width="28" height="28" /> | **MangaTime** | `mangatime.org` | `v1.0.2` | `manga` | AR | Yomiru | [mangatime.js](./extensions/mangatime.js) |
 | <img src="https://nekobt.to/cdn/pfp/null/64" width="28" height="28" /> | **NekoBT** | `to.nekobt` | `v1.0.0` | `bangumi` | ALL | Yomiru | [nekobt.js](./extensions/nekobt.js) |
 | <img src="https://nyaa.si/static/favicon.png" width="28" height="28" /> | **Nyaa** | `si.nyaa` | `v1.0.0` | `bangumi` | ALL | Yomiru | [nyaa.js](./extensions/nyaa.js) |
+| <img src="https://tsukihime.org/favicon.ico" width="28" height="28" /> | **TsukiHime** | `org.tsukihime` | `v1.0.0` | `bangumi` | ALL | Yomiru | [tsukihime.js](./extensions/tsukihime.js) |
 | <img src="https://witanime.site/assets/images/favicon.ico" width="28" height="28" /> | **WitAnime** | `site.witanime` | `v1.1.1` | `bangumi` | AR | Yomiru | [witanime.js](./extensions/witanime.js) |
 
 ## How to Use in Yomiru
