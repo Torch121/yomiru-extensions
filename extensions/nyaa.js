@@ -258,28 +258,26 @@ export default class extends Extension {
       .filter(Boolean)
       .join("\n");
 
-    // Extract File List from .torrent-file-list
+    // Extract File List from .torrent-file-list (leaf files only, ignoring folder li tags)
     const files = [];
     const fileListMatch = html.match(/class="torrent-file-list[^"]*"[\s\S]*?<\/div>/);
     if (fileListMatch) {
-      const fileLiRegex = /<li[^>]*>[\s\S]*?<\/li>/g;
+      const fileLiRegex = /<li[^>]*>(?:(?!<ul[\s>])[\s\S])*?<i class="fa fa-file"><\/i>([\s\S]*?)<\/li>/gi;
       let liMatch;
       while ((liMatch = fileLiRegex.exec(fileListMatch[0])) !== null) {
-        const liContent = liMatch[0];
-        if (liContent.includes("fa-file")) {
-          const sMatch = liContent.match(/<span class="file-size">\(([^)]+)\)<\/span>/);
-          const fSize = sMatch ? sMatch[1] : "";
-          const nameClean = liContent
-            .replace(/<span class="file-size">[\s\S]*?<\/span>/, "")
-            .replace(/<[^>]+>/g, "")
-            .trim();
+        const inner = liMatch[1];
+        const sMatch = inner.match(/<span class="file-size">\(([^)]+)\)<\/span>/);
+        const fSize = sMatch ? sMatch[1] : "";
+        const nameClean = inner
+          .replace(/<span class="file-size">[\s\S]*?<\/span>/, "")
+          .replace(/<[^>]+>/g, "")
+          .trim();
 
-          if (nameClean) {
-            files.push({
-              name: nameClean,
-              size: fSize,
-            });
-          }
+        if (nameClean) {
+          files.push({
+            name: nameClean,
+            size: fSize,
+          });
         }
       }
     }
@@ -291,18 +289,29 @@ export default class extends Extension {
     );
     const targetFiles = videoFiles.length > 0 ? videoFiles : files;
 
+    // Ensure main episodes are sorted before extras/specials so Episode 1 is S01E01
+    const extrasKeywords = ["ncop", "nced", "op ", "ed ", "pv", "extra", "menu", "creditless"];
+    const isExtra = (name) => {
+      const lower = name.toLowerCase();
+      return extrasKeywords.some((kw) => lower.includes(kw));
+    };
+
+    const mainEpisodes = targetFiles.filter((f) => !isExtra(f.name));
+    const extraEpisodes = targetFiles.filter((f) => isExtra(f.name));
+    const orderedFiles = [...mainEpisodes, ...extraEpisodes];
+
     const episodes = [];
-    if (targetFiles.length > 1) {
+    if (orderedFiles.length > 1) {
       // Multi-file batch release
-      for (let i = 0; i < targetFiles.length; i++) {
-        const f = targetFiles[i];
+      for (let i = 0; i < orderedFiles.length; i++) {
+        const f = orderedFiles[i];
         episodes.push({
           name: f.size ? `${f.name} (${f.size})` : f.name,
           url: `${path}#file-${i}`,
         });
       }
-    } else if (targetFiles.length === 1) {
-      const f = targetFiles[0];
+    } else if (orderedFiles.length === 1) {
+      const f = orderedFiles[0];
       episodes.push({
         name: f.size ? `${f.name} (${f.size})` : f.name,
         url: path,
@@ -320,7 +329,7 @@ export default class extends Extension {
       desc: formattedDesc,
       episodes: [
         {
-          title: targetFiles.length > 1 ? "Batch Episodes / Files" : "Torrent Media",
+          title: orderedFiles.length > 1 ? "Batch Episodes / Files" : "Torrent Media",
           urls: episodes,
         },
       ],
