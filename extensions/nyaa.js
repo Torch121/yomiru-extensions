@@ -348,7 +348,10 @@ export default class extends Extension {
       magnetUri = magnetMatch[1].replace(/&amp;/g, "&");
     }
 
-    // 2. Extract .torrent download URL
+    const base = (await this.getSetting("nyaa_url")) || "https://nyaa.si";
+    const cleanBase = base.replace(/\/+$/, "");
+
+    // 2. Extract .torrent download URL (/download/)
     let torrentDownloadUrl = null;
     const torrentMatch =
       html.match(/href="(\/download\/\d+\.torrent)"/) ||
@@ -357,7 +360,7 @@ export default class extends Extension {
       const tPath = torrentMatch[1];
       torrentDownloadUrl = tPath.startsWith("http")
         ? tPath
-        : `https://nyaa.si/download/${tPath.replace(/^\/download\//, "")}`;
+        : `${cleanBase}${tPath.startsWith("/") ? "" : "/"}${tPath}`;
     }
 
     if (!magnetUri && !torrentDownloadUrl) {
@@ -389,7 +392,7 @@ export default class extends Extension {
       url: primaryUrl,
       sources,
       headers: {
-        Referer: "https://nyaa.si/",
+        Referer: `${cleanBase}/`,
       },
     };
   }
