@@ -162,36 +162,28 @@ export default class extends Extension {
 
     if (queryToSearch && queryToSearch !== "") {
       const hasSeasonOrFormat = /\b(s\d{1,2}|season\s*\d{1,2}|part\s*\d{1,2}|cour\s*\d{1,2}|movie|film|gekijouban|ova|ona|special|batch)\b/i.test(queryToSearch);
+      const batchParam = batch ? `&batch=${encodeURIComponent(batch)}` : "";
+      const baseRes = await this.reqJson(
+        `/api/v1/torrents/search?query=${encodeURIComponent(queryToSearch)}&sort_by=${sortBy}&category=${category}&limit=${limit}&offset=${offset}${batchParam}`
+      );
+      const baseItems = this._parseResults(baseRes ? baseRes.data : null);
+      if (baseItems && baseItems.length > 0) {
+        return baseItems;
+      }
+
       if (!hasSeasonOrFormat && p === 1) {
-        // Target Season 1 batches specifically first (e.g. "jujutsu kaisen s1")
-        const batchParam = batch ? `&batch=${encodeURIComponent(batch)}` : "";
+        // Fallback to Season 1 specific search if base query yielded no results
+        const s1Query = `${queryToSearch} s1`;
         const s1Res = await this.reqJson(
-          `/api/v1/torrents/search?query=${encodeURIComponent(`${queryToSearch} s1`)}&sort_by=${sortBy}&category=${category}&limit=${limit}&offset=${offset}${batchParam}`
+          `/api/v1/torrents/search?query=${encodeURIComponent(s1Query)}&sort_by=${sortBy}&category=${category}&limit=${limit}&offset=${offset}${batchParam}`
         );
         const s1Items = this._parseResults(s1Res ? s1Res.data : null);
         if (s1Items && s1Items.length > 0) {
-          const baseRes = await this.reqJson(
-            `/api/v1/torrents/search?query=${encodeURIComponent(queryToSearch)}&sort_by=${sortBy}&category=${category}&limit=${limit}&offset=${offset}${batchParam}`
-          );
-          const baseItems = this._parseResults(baseRes ? baseRes.data : null);
-          const seen = new Set(s1Items.map((r) => r.url || r.title));
-          const merged = [...s1Items];
-          for (const item of (baseItems || [])) {
-            const key = item.url || item.title;
-            if (!seen.has(key)) {
-              seen.add(key);
-              merged.push(item);
-            }
-          }
-          return merged;
+          return s1Items;
         }
       }
 
-      const batchParam = batch ? `&batch=${encodeURIComponent(batch)}` : "";
-      const res = await this.reqJson(
-        `/api/v1/torrents/search?query=${encodeURIComponent(queryToSearch)}&sort_by=${sortBy}&category=${category}&limit=${limit}&offset=${offset}${batchParam}`
-      );
-      return this._parseResults(res ? res.data : null);
+      return baseItems || [];
     }
   }
 

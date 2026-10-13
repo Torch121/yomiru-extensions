@@ -195,25 +195,20 @@ export default class extends Extension {
 
     if (queryToSearch.length >= 2) {
       const hasSeasonOrFormat = /\b(s\d{1,2}|season\s*\d{1,2}|part\s*\d{1,2}|cour\s*\d{1,2}|movie|film|gekijouban|ova|ona|special|batch)\b/i.test(queryToSearch);
+      const baseItems = await this._executeSearchQuery(queryToSearch, limit, offset, mainSource, isAdult);
+      if (baseItems && baseItems.length > 0) {
+        return baseItems;
+      }
+
       if (!hasSeasonOrFormat && p === 1) {
-        // Target Season 1 batches specifically first (e.g. "jujutsu kaisen s1")
+        // Fallback to Season 1 specific search if base query yielded no results
         const s1Query = `${queryToSearch} s1`;
         const s1Res = await this._executeSearchQuery(s1Query, limit, offset, mainSource, isAdult);
         if (s1Res && s1Res.length > 0) {
-          const baseRes = await this._executeSearchQuery(queryToSearch, limit, offset, mainSource, isAdult);
-          const seen = new Set(s1Res.map((r) => r.url || r.title));
-          const merged = [...s1Res];
-          for (const item of (baseRes || [])) {
-            const key = item.url || item.title;
-            if (!seen.has(key)) {
-              seen.add(key);
-              merged.push(item);
-            }
-          }
-          return merged;
+          return s1Res;
         }
       }
-      return this._executeSearchQuery(queryToSearch, limit, offset, mainSource, isAdult);
+      return baseItems || [];
     }
 
     // Fallback to filtered catalog browse when query is empty or < 2 chars
@@ -638,7 +633,14 @@ export default class extends Extension {
         cover = item.anime.thumbnail;
       }
 
-      const updateInfo = [sizeStr, filesStr, groupName, sourceName]
+      const audioLangs = Array.isArray(item.audiolangs) && item.audiolangs.length > 0
+        ? `Audio: ${item.audiolangs.map((l) => l.toUpperCase()).join(', ')}`
+        : '';
+      const subLangs = Array.isArray(item.sublangs) && item.sublangs.length > 0
+        ? `Subs: ${item.sublangs.map((l) => l.toUpperCase()).join(', ')}`
+        : '';
+
+      const updateInfo = [sizeStr, filesStr, audioLangs, subLangs, groupName, sourceName]
         .filter(Boolean)
         .join(" • ");
 
