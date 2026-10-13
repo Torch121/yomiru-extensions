@@ -153,6 +153,35 @@ export default class extends Extension {
     }
 
     if (queryToSearch && queryToSearch !== "") {
+      const hasSeasonOrFormat = /\b(s\d{1,2}|season\s*\d{1,2}|part\s*\d{1,2}|cour\s*\d{1,2}|movie|film|gekijouban|ova|ona|special|batch)\b/i.test(queryToSearch);
+      if (!hasSeasonOrFormat && p === 1) {
+        // Target Season 1 batches specifically first (e.g. "jujutsu kaisen s1")
+        const s1Query = encodeURIComponent(`${queryToSearch} s1`);
+        const s1Res = await this.req(
+          `/?f=${f}&c=${category}&q=${s1Query}&s=${sortBy}&o=${sortOrder}&p=${p}`
+        );
+        const s1Html = typeof s1Res === "string" ? s1Res : s1Res.html || "";
+        const s1Items = this._parseTorrentTable(s1Html);
+        if (s1Items && s1Items.length > 0) {
+          const baseQ = encodeURIComponent(queryToSearch);
+          const baseRes = await this.req(
+            `/?f=${f}&c=${category}&q=${baseQ}&s=${sortBy}&o=${sortOrder}&p=${p}`
+          );
+          const baseHtml = typeof baseRes === "string" ? baseRes : baseRes.html || "";
+          const baseItems = this._parseTorrentTable(baseHtml);
+          const seen = new Set(s1Items.map((r) => r.url || r.title));
+          const merged = [...s1Items];
+          for (const item of (baseItems || [])) {
+            const key = item.url || item.title;
+            if (!seen.has(key)) {
+              seen.add(key);
+              merged.push(item);
+            }
+          }
+          return merged;
+        }
+      }
+
       const q = encodeURIComponent(queryToSearch);
       const res = await this.req(
         `/?f=${f}&c=${category}&q=${q}&s=${sortBy}&o=${sortOrder}&p=${p}`

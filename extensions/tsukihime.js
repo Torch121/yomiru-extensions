@@ -194,6 +194,25 @@ export default class extends Extension {
     }
 
     if (queryToSearch.length >= 2) {
+      const hasSeasonOrFormat = /\b(s\d{1,2}|season\s*\d{1,2}|part\s*\d{1,2}|cour\s*\d{1,2}|movie|film|gekijouban|ova|ona|special|batch)\b/i.test(queryToSearch);
+      if (!hasSeasonOrFormat && p === 1) {
+        // Target Season 1 batches specifically first (e.g. "jujutsu kaisen s1")
+        const s1Query = `${queryToSearch} s1`;
+        const s1Res = await this._executeSearchQuery(s1Query, limit, offset, mainSource, isAdult);
+        if (s1Res && s1Res.length > 0) {
+          const baseRes = await this._executeSearchQuery(queryToSearch, limit, offset, mainSource, isAdult);
+          const seen = new Set(s1Res.map((r) => r.url || r.title));
+          const merged = [...s1Res];
+          for (const item of (baseRes || [])) {
+            const key = item.url || item.title;
+            if (!seen.has(key)) {
+              seen.add(key);
+              merged.push(item);
+            }
+          }
+          return merged;
+        }
+      }
       return this._executeSearchQuery(queryToSearch, limit, offset, mainSource, isAdult);
     }
 
@@ -240,9 +259,15 @@ export default class extends Extension {
     // Prioritize completed multi-file batch releases first so full-season packs match cleanly,
     // while preserving relative search relevance within each group.
     const scored = items.map((item, idx) => {
+      const name = item.name || "";
       const isCompleted = item.state === "completed" ? 1 : 0;
-      const isBatch = (item.filecount || 0) > 1 || /batch|\bS\d{1,2}\b/i.test(item.name || "") ? 1 : 0;
-      const priority = isCompleted * 2 + isBatch;
+      const fileCount = item.filecount || 0;
+      const isS0 = /\b(s0|s00|specials?)\b/i.test(name);
+      const isSeasonMatch = /\b(s0?1|season\s*1)\b/i.test(name);
+      const isBatch = (!isS0 && (fileCount > 1 || /batch|\bS0?[1-9]\b/i.test(name))) ? 1 : 0;
+      let priority = isCompleted * 3 + isBatch * 2;
+      if (isSeasonMatch && fileCount >= 2) priority += 4;
+      if (isS0) priority -= 3;
       return { item, idx, priority };
     });
 
