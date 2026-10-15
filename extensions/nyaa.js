@@ -327,9 +327,14 @@ export default class extends Extension {
     const targetFiles = videoFiles.length > 0 ? videoFiles : files;
 
     // Ensure main episodes are sorted before extras/specials
-    const extrasKeywords = ["ncop", "nced", "op ", "ed ", "pv", "extra", "menu", "creditless", "trailer", "preview"];
+    const extrasKeywords = [
+      "ncop", "nced", "op ", "ed ", "pv", "extra", "menu", "creditless", "trailer", "preview",
+      "special", "ova"
+    ];
     const isExtra = (name) => {
       const lower = name.toLowerCase();
+      if (/\b(?:s\d{1,2})?sp\d*\b/i.test(name)) return true;
+      if (/\b(?:ova|ona)\d*\b/i.test(name)) return true;
       return extrasKeywords.some((kw) => lower.includes(kw));
     };
 
