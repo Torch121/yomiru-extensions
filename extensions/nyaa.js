@@ -166,7 +166,18 @@ export default class extends Extension {
       }
 
       if (!hasSeasonOrFormat && p === 1) {
-        // Fallback to Season 1 specific search if base query yielded no results
+        // Fallback to batch search if base query yielded no results
+        const batchQuery = encodeURIComponent(`${queryToSearch} batch`);
+        const batchRes = await this.req(
+          `/?f=${f}&c=${category}&q=${batchQuery}&s=${sortBy}&o=${sortOrder}&p=${p}`
+        );
+        const batchHtml = typeof batchRes === "string" ? batchRes : batchRes.html || "";
+        const batchItems = this._parseTorrentTable(batchHtml);
+        if (batchItems && batchItems.length > 0) {
+          return batchItems;
+        }
+
+        // Fallback to Season 1 specific search
         const s1Query = encodeURIComponent(`${queryToSearch} s1`);
         const s1Res = await this.req(
           `/?f=${f}&c=${category}&q=${s1Query}&s=${sortBy}&o=${sortOrder}&p=${p}`
@@ -307,39 +318,69 @@ export default class extends Extension {
     const videoFiles = files.filter((f) =>
       videoExts.some((ext) => f.name.toLowerCase().endsWith(ext))
     );
+
+    // If there are files listed but NO playable video files, reject this torrent
+    if (files.length > 0 && videoFiles.length === 0) {
+      throw new Error(`No playable video media files found in torrent (${files.length} non-video files found)`);
+    }
+
     const targetFiles = videoFiles.length > 0 ? videoFiles : files;
 
-    // Ensure main episodes are sorted before extras/specials so Episode 1 is S01E01
-    const extrasKeywords = ["ncop", "nced", "op ", "ed ", "pv", "extra", "menu", "creditless"];
+    // Ensure main episodes are sorted before extras/specials
+    const extrasKeywords = ["ncop", "nced", "op ", "ed ", "pv", "extra", "menu", "creditless", "trailer", "preview"];
     const isExtra = (name) => {
       const lower = name.toLowerCase();
       return extrasKeywords.some((kw) => lower.includes(kw));
     };
 
-    const mainEpisodes = targetFiles.filter((f) => !isExtra(f.name));
-    const extraEpisodes = targetFiles.filter((f) => isExtra(f.name));
-    const orderedFiles = [...mainEpisodes, ...extraEpisodes];
+    const mainFiles = targetFiles.filter((f) => !isExtra(f.name));
+    const extraFiles = targetFiles.filter((f) => isExtra(f.name));
 
-    const episodes = [];
-    if (orderedFiles.length > 1) {
-      // Multi-file batch release
-      for (let i = 0; i < orderedFiles.length; i++) {
-        const f = orderedFiles[i];
-        episodes.push({
-          name: f.size ? `${f.name} (${f.size})` : f.name,
-          url: `${path}#file-${i}`,
-        });
-      }
-    } else if (orderedFiles.length === 1) {
-      const f = orderedFiles[0];
-      episodes.push({
+    const mainEpisodes = [];
+    for (let i = 0; i < mainFiles.length; i++) {
+      const f = mainFiles[i];
+      const origIndex = files.indexOf(f);
+      const fileIdx = origIndex >= 0 ? origIndex : i;
+      mainEpisodes.push({
         name: f.size ? `${f.name} (${f.size})` : f.name,
-        url: path,
+        url: mainFiles.length > 1 ? `${path}#file-${fileIdx}` : path,
       });
-    } else {
-      episodes.push({
-        name: title || "Torrent Stream",
-        url: path,
+    }
+
+    const extraEpisodes = [];
+    for (let i = 0; i < extraFiles.length; i++) {
+      const f = extraFiles[i];
+      const origIndex = files.indexOf(f);
+      const fileIdx = origIndex >= 0 ? origIndex : (mainFiles.length + i);
+      extraEpisodes.push({
+        name: f.size ? `${f.name} (${f.size})` : f.name,
+        url: `${path}#file-${fileIdx}`,
+      });
+    }
+
+    const episodeGroups = [];
+    if (mainEpisodes.length > 0) {
+      episodeGroups.push({
+        title: mainEpisodes.length > 1 ? "Batch Episodes / Files" : "Torrent Media",
+        urls: mainEpisodes,
+      });
+    }
+    if (extraEpisodes.length > 0) {
+      episodeGroups.push({
+        title: "Extras & Specials",
+        urls: extraEpisodes,
+      });
+    }
+
+    if (episodeGroups.length === 0) {
+      episodeGroups.push({
+        title: "Torrent Media",
+        urls: [
+          {
+            name: title || "Torrent Stream",
+            url: path,
+          },
+        ],
       });
     }
 
@@ -347,12 +388,7 @@ export default class extends Extension {
       title: title || "Nyaa Release",
       cover,
       desc: formattedDesc,
-      episodes: [
-        {
-          title: orderedFiles.length > 1 ? "Batch Episodes / Files" : "Torrent Media",
-          urls: episodes,
-        },
-      ],
+      episodes: episodeGroups,
     };
   }
 
@@ -437,6 +473,20 @@ export default class extends Extension {
       const rowContent = match[2];
       if (rowContent.includes("<th")) continue; // Skip table header
 
+      // Extract Category link / ID
+      const catMatch = rowContent.match(/href="\/(\?c=([0-9_]+))"/);
+      const catCode = catMatch ? catMatch[2] : "";
+
+      // Skip non-anime categories (3 = Literature/Manga/Light novels, 4 = Audio/OST, 5 = Pictures, 6 = Software)
+      if (
+        catCode.startsWith("3_") ||
+        catCode.startsWith("4_") ||
+        catCode.startsWith("5_") ||
+        catCode.startsWith("6_")
+      ) {
+        continue;
+      }
+
       // Extract View Link & Title
       const viewLinkMatch =
         rowContent.match(/<a href="(\/view\/\d+)" title="([^"]+)">/) ||
@@ -452,11 +502,36 @@ export default class extends Extension {
         .replace(/&quot;/g, '"')
         .trim();
 
+      // Filter out obvious non-video / subtitle-only / DDL uploads
+      const lowerTitle = title.toLowerCase();
+      const hasDdl = /\[ddl\]|\bddl\b/i.test(title);
+      const hasSubsOnly = /\b(subs?|subpack|subtitles?|fonts?|scans?|artbook|manga|ost|soundtrack|album)\b/i.test(
+        lowerTitle
+      );
+      const hasVideoSpec = /\b(\d{3,4}p|2160p|4k|mkv|mp4|avi|web-?dl|web-?rip|bdrip|bluray|hevc|x265|h265|x264|h264|av1)\b/i.test(
+        lowerTitle
+      );
+
+      // If it contains DDL, or contains subs/ost/scans without any video quality/format specification, skip it
+      if (hasDdl || (hasSubsOnly && !hasVideoSpec)) {
+        continue;
+      }
+
       // Extract Size
       let size = "";
       const sizeMatch = rowContent.match(/<td class="text-center">([0-9.]+\s*(?:GiB|MiB|KiB|TiB|B))<\/td>/);
       if (sizeMatch) {
         size = sizeMatch[1];
+      }
+
+      // Skip tiny sizes that cannot be video (e.g. < 1 MiB or KiB / Bytes)
+      if (
+        size &&
+        (size.endsWith("KiB") ||
+          size.endsWith("B") ||
+          (size.startsWith("0.") && size.endsWith("MiB")))
+      ) {
+        continue;
       }
 
       // Extract Seeders
@@ -481,14 +556,19 @@ export default class extends Extension {
         catIcon = iconPath.startsWith("http") ? iconPath : `https://nyaa.si${iconPath}`;
       }
 
+      const isBatch = /\b(batch|complete|\d+\s*-\s*\d+|\d+\s*~\s*\d+|s\d+\s*complete)\b/i.test(
+        title
+      );
+
       items.push({
         title,
         url: viewPath,
         cover: catIcon,
-        update: `${seeders} seeds • ${size || "P2P"}`,
+        update: `${seeders} seeds • ${size || "P2P"}${isBatch ? " • Batch" : ""}`,
       });
     }
 
     return items;
   }
 }
+
