@@ -225,6 +225,36 @@
     "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/mangatime.js"
   },
   {
+    "package": "to.mkissa.anime",
+    "name": "Mkissa (Anime)",
+    "version": "v1.0.0",
+    "author": "Yomiru",
+    "lang": "all",
+    "license": "MIT",
+    "type": "bangumi",
+    "webSite": "https://mkissa.to",
+    "nsfw": false,
+    "icon": "https://mkissa.to/favicon.ico",
+    "description": "Mkissa anime streaming provider with reverse-engineered client crypto decryption and multi-server playback.",
+    "filename": "mkissa-anime.js",
+    "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/mkissa-anime.js"
+  },
+  {
+    "package": "to.mkissa.manga",
+    "name": "Mkissa (Manga)",
+    "version": "v1.0.0",
+    "author": "Yomiru",
+    "lang": "all",
+    "license": "MIT",
+    "type": "manga",
+    "webSite": "https://mkissa.to",
+    "nsfw": false,
+    "icon": "https://mkissa.to/favicon.ico",
+    "description": "Mkissa manga reader provider with reverse-engineered client crypto decryption and high-resolution CDN images.",
+    "filename": "mkissa-manga.js",
+    "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/mkissa-manga.js"
+  },
+  {
     "package": "to.nekobt",
     "name": "NekoBT",
     "version": "v1.0.0",
