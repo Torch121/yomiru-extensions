@@ -1,6 +1,6 @@
 // ==YomiruExtension==
 // @name         Nyaa
-// @version      v1.0.0
+// @version      v1.0.1
 // @author       Yomiru
 // @lang         all
 // @license      MIT
@@ -555,9 +555,9 @@ export default class extends Extension {
 
       // Extract category icon
       let catIcon = "https://nyaa.si/static/favicon.png";
-      const catMatch = rowContent.match(/<img src="([^"]+)" alt="([^"]+)" class="category-icon">/);
-      if (catMatch) {
-        const iconPath = catMatch[1];
+      const catIconMatch = rowContent.match(/<img src="([^"]+)" alt="([^"]+)" class="category-icon">/);
+      if (catIconMatch) {
+        const iconPath = catIconMatch[1];
         catIcon = iconPath.startsWith("http") ? iconPath : `https://nyaa.si${iconPath}`;
       }
 
