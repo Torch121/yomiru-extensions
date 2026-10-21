@@ -2,7 +2,7 @@
 
 Official remote extension catalog for [Yomiru](https://github.com/Torch121/Yomiru).
 
-> **Last Synced**: 2026-10-18 19:07 UTC  
+> **Last Synced**: 2026-10-21 16:39 UTC  
 > **Repository**: `Torch121/yomiru-extensions` (branch: `main`)  
 > **Manifest URL**: `https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/index.json`
 
@@ -18,7 +18,9 @@ Official remote extension catalog for [Yomiru](https://github.com/Torch121/Yomir
 | <img src="https://anilist.co/img/icons/apple-touch-icon.png" width="28" height="28" /> | **AniGoGo** | `ani.gogo` | `v0.0.5` | `bangumi` | EN | OshekharO | [animex.js](./extensions/animex.js) |
 | <img src="https://ani.pm/icon.png" width="28" height="28" /> | **Ani.pm** | `pm.ani` | `v1.0.0` | `bangumi` | ALL | Yomiru | [anipm.js](./extensions/anipm.js) |
 | <img src="https://aniwaves.ru/assets/images/favicons/favicon-96x96.png" width="28" height="28" /> | **AniWaves** | `ru.aniwaves` | `v1.0.0` | `bangumi` | ALL | Yomiru | [aniwaves.js](./extensions/aniwaves.js) |
+| <img src="https://anv.to/favicon.ico" width="28" height="28" /> | **Anv** | `to.anv` | `v1.0.0` | `bangumi` | EN | Yomiru | [anv.js](./extensions/anv.js) |
 | <img src="https://hianime.at/theme/images/icons-192.png" width="28" height="28" /> | **HiAnime** | `hianime.at` | `v0.2.0` | `bangumi` | EN | Yomiru | [hianime.js](./extensions/hianime.js) |
+| <img src="https://kagane.si/favicon.ico" width="28" height="28" /> | **Kagane** | `si.kagane` | `v1.0.0` | `manga` | ALL | Yomiru | [kagane.js](./extensions/kagane.js) |
 | <img src="https://likemanga.ink/upload/logos/2024/09/fav_1727153781_66f24675e291d.png" width="28" height="28" /> | **LikeManga** | `ink.likemanga` | `v1.0.1` | `manga` | ALL | Yomiru | [likemanga.js](./extensions/likemanga.js) |
 | <img src="https://mangaball.com/images/favicon.png" width="28" height="28" /> | **MangaBall** | `mangaball.com` | `v0.0.3` | `manga` | ALL | Yomiru | [mangaball.js](./extensions/mangaball.js) |
 | <img src="https://mangadar.com/wp-content/uploads/2026/07/favicon-300x300.png" width="28" height="28" /> | **MangaDar** | `mangadar.com` | `v1.0.0` | `manga` | AR | Yomiru | [mangadar.js](./extensions/mangadar.js) |
@@ -27,7 +29,9 @@ Official remote extension catalog for [Yomiru](https://github.com/Torch121/Yomir
 | <img src="https://mangatime.org/brand/v2/icons/icon-192.png" width="28" height="28" /> | **MangaTime** | `mangatime.org` | `v1.0.2` | `manga` | AR | Yomiru | [mangatime.js](./extensions/mangatime.js) |
 | <img src="https://mkissa.to/favicon.ico" width="28" height="28" /> | **Mkissa (Manga)** | `to.mkissa.manga` | `v1.0.0` | `manga` | ALL | Yomiru | [mkissa-manga.js](./extensions/mkissa-manga.js) |
 | <img src="https://nekobt.to/cdn/pfp/null/64" width="28" height="28" /> | **NekoBT** | `to.nekobt` | `v1.0.0` | `bangumi` | ALL | Yomiru | [nekobt.js](./extensions/nekobt.js) |
-| <img src="https://nyaa.si/static/favicon.png" width="28" height="28" /> | **Nyaa** | `si.nyaa` | `v1.0.1` | `bangumi` | ALL | Yomiru | [nyaa.js](./extensions/nyaa.js) |
+| <img src="https://nyaa.si/static/favicon.png" width="28" height="28" /> | **Nyaa** | `si.nyaa` | `v1.0.2` | `bangumi` | ALL | Yomiru | [nyaa.js](./extensions/nyaa.js) |
+| <img src="https://otakuarab.com/favicon.ico" width="28" height="28" /> | **Otaku Arab** | `com.otakuarab` | `v1.0.0` | `bangumi` | AR | Yomiru | [otakuarab.js](./extensions/otakuarab.js) |
+| <img src="https://senshi.to/favicon.ico" width="28" height="28" /> | **Senshi** | `to.senshi` | `v1.0.0` | `bangumi` | EN | Yomiru | [senshi.js](./extensions/senshi.js) |
 | <img src="https://tsukihime.org/favicon.ico" width="28" height="28" /> | **TsukiHime** | `org.tsukihime` | `v1.0.0` | `bangumi` | ALL | Yomiru | [tsukihime.js](./extensions/tsukihime.js) |
 | <img src="https://witanime.site/assets/images/favicon.ico" width="28" height="28" /> | **WitAnime** | `site.witanime` | `v1.1.1` | `bangumi` | AR | Yomiru | [witanime.js](./extensions/witanime.js) |
 

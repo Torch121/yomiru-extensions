@@ -120,6 +120,21 @@
     "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/aniwaves.js"
   },
   {
+    "package": "to.anv",
+    "name": "Anv",
+    "version": "v1.0.0",
+    "author": "Yomiru",
+    "lang": "en",
+    "license": "MIT",
+    "type": "bangumi",
+    "webSite": "https://anv.to",
+    "nsfw": false,
+    "icon": "https://anv.to/favicon.ico",
+    "description": "Stream high-quality subbed and dubbed anime with fast multi-resolution M3U8 playback from Anv.to",
+    "filename": "anv.js",
+    "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/anv.js"
+  },
+  {
     "package": "hianime.at",
     "name": "HiAnime",
     "version": "v0.2.0",
@@ -133,6 +148,21 @@
     "description": "HiAnime streaming provider with Megacloud decrypter.",
     "filename": "hianime.js",
     "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/hianime.js"
+  },
+  {
+    "package": "si.kagane",
+    "name": "Kagane",
+    "version": "v1.0.0",
+    "author": "Yomiru",
+    "lang": "all",
+    "license": "MIT",
+    "type": "manga",
+    "webSite": "https://kagane.si",
+    "nsfw": false,
+    "icon": "https://kagane.si/favicon.ico",
+    "description": "Read manga, manhwa, and manhua with high-speed reader pages from Kagane.si",
+    "filename": "kagane.js",
+    "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/kagane.js"
   },
   {
     "package": "ink.likemanga",
@@ -257,7 +287,7 @@
   {
     "package": "si.nyaa",
     "name": "Nyaa",
-    "version": "v1.0.1",
+    "version": "v1.0.2",
     "author": "Yomiru",
     "lang": "all",
     "license": "MIT",
@@ -268,6 +298,36 @@
     "description": "Anime torrent indexer providing high-speed BitTorrent and Magnet streams from Nyaa.si.",
     "filename": "nyaa.js",
     "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/nyaa.js"
+  },
+  {
+    "package": "com.otakuarab",
+    "name": "Otaku Arab",
+    "version": "v1.0.0",
+    "author": "Yomiru",
+    "lang": "ar",
+    "license": "MIT",
+    "type": "bangumi",
+    "webSite": "https://otakuarab.com",
+    "nsfw": false,
+    "icon": "https://otakuarab.com/favicon.ico",
+    "description": "مشاهدة أحدث مسلسلات وأفلام الأنمي المترجمة أون لاين عبر موقع أوتاكو عرب (Otaku Arab)",
+    "filename": "otakuarab.js",
+    "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/otakuarab.js"
+  },
+  {
+    "package": "to.senshi",
+    "name": "Senshi",
+    "version": "v1.0.0",
+    "author": "Yomiru",
+    "lang": "en",
+    "license": "MIT",
+    "type": "bangumi",
+    "webSite": "https://senshi.to",
+    "nsfw": false,
+    "icon": "https://senshi.to/favicon.ico",
+    "description": "Stream anime in high definition with English subs and dubs from Senshi.to",
+    "filename": "senshi.js",
+    "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/senshi.js"
   },
   {
     "package": "org.tsukihime",

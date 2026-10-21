@@ -1,6 +1,6 @@
 // ==YomiruExtension==
 // @name         Nyaa
-// @version      v1.0.1
+// @version      v1.0.2
 // @author       Yomiru
 // @lang         all
 // @license      MIT
@@ -12,6 +12,16 @@
 // ==/YomiruExtension==
 
 export default class extends Extension {
+  _cleanQuery(query) {
+    if (!query) return "";
+    return String(query)
+      .replace(/[\u2018\u2019]/g, "'")
+      .replace(/[\u201C\u201D]/g, '"')
+      .replace(/[:;!?~_]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
   async req(url, options = {}) {
     const base = (await this.getSetting("nyaa_url")) || "https://nyaa.si";
     const cleanBase = base.replace(/\/+$/, "");
@@ -132,8 +142,8 @@ export default class extends Extension {
 
     let queryToSearch = "";
     if (typeof kw === "object" && kw !== null) {
-      const jp = kw.japaneseTitle || kw.nativeTitle || kw.japanese || "";
-      const en = kw.englishTitle || kw.english || kw.query || "";
+      const jp = this._cleanQuery(kw.japaneseTitle || kw.nativeTitle || kw.japanese || "");
+      const en = this._cleanQuery(kw.englishTitle || kw.english || kw.query || "");
 
       // If Japanese title available, try searching with Japanese query first
       if (jp && jp.trim()) {
@@ -149,7 +159,7 @@ export default class extends Extension {
       }
       queryToSearch = en || jp || "";
     } else {
-      queryToSearch = String(kw || "").trim();
+      queryToSearch = this._cleanQuery(String(kw || "").trim());
     }
 
     if (queryToSearch && queryToSearch !== "") {
@@ -533,7 +543,7 @@ export default class extends Extension {
       if (
         size &&
         (size.endsWith("KiB") ||
-          size.endsWith("B") ||
+          /[0-9.]+\s*B$/i.test(size) ||
           (size.startsWith("0.") && size.endsWith("MiB")))
       ) {
         continue;
@@ -542,12 +552,12 @@ export default class extends Extension {
       // Extract Seeders
       let seeders = "0";
       const seedersMatch = rowContent.match(
-        /<td class="text-center"[^>]*>(\d+)<\/td>\s*<td class="text-center"[^>]*>(\d+)<\/td>\s*<td class="text-center"[^>]*>(\d+)<\/td>\s*<\/tr>/
+        /<td class="text-center"[^>]*>(?:<[^>]+>)*(\d+)(?:<\/[^>]+>)*<\/td>\s*<td class="text-center"[^>]*>(?:<[^>]+>)*(\d+)(?:<\/[^>]+>)*<\/td>\s*<td class="text-center"[^>]*>(?:<[^>]+>)*(\d+)(?:<\/[^>]+>)*<\/td>/
       );
       if (seedersMatch) {
         seeders = seedersMatch[1];
       } else {
-        const allTdMatches = [...rowContent.matchAll(/<td class="text-center">(\d+)<\/td>/g)];
+        const allTdMatches = [...rowContent.matchAll(/<td class="text-center"[^>]*>(?:<[^>]+>)*(\d+)(?:<\/[^>]+>)*<\/td>/g)];
         if (allTdMatches.length >= 3) {
           seeders = allTdMatches[0][1];
         }

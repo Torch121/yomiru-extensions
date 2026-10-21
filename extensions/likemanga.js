@@ -298,24 +298,17 @@ export default class extends Extension {
     const images = [];
     const seen = new Set();
 
-    // Primary: .page-chapter img tags
-    const imgMatches = [...html.matchAll(/class="page-chapter[^"]*"[^>]*>[\s\S]*?<img[^>]+src="([^"]+)"/gi)];
+    // Primary: .page-chapter img tags with rich attribute fallback (data-original, data-src, data-url, srcset, src)
+    const imgMatches = [...html.matchAll(/class="page-chapter[^"]*"[^>]*>[\s\S]*?<img([^>]+)>/gi)];
     for (const m of imgMatches) {
-      let src = m[1].trim();
-      if (!src.startsWith("http")) {
-        src = `${base}${src.startsWith("/") ? "" : "/"}${src}`;
-      }
-      if (!seen.has(src)) {
-        seen.add(src);
-        images.push(src);
-      }
-    }
-
-    // Fallback: search all image links matching reader CDN
-    if (images.length === 0) {
-      const fallbackMatches = [...html.matchAll(/<img[^>]+src="([^"]*(?:mgread\.io|\/manga\/)[^"]*)"/gi)];
-      for (const m of fallbackMatches) {
-        let src = m[1].trim();
+      const attrs = m[1];
+      const srcMatch = attrs.match(/(?:data-original|data-src|data-url|src)=["']([^"']+)["']/i);
+      if (srcMatch) {
+        let src = srcMatch[1].trim();
+        if (src.startsWith("data:image")) continue;
+        if (!src.startsWith("http")) {
+          src = `${base}${src.startsWith("/") ? "" : "/"}${src}`;
+        }
         if (!seen.has(src)) {
           seen.add(src);
           images.push(src);
@@ -323,8 +316,33 @@ export default class extends Extension {
       }
     }
 
+    // Fallback: search all image links matching reader CDN
+    if (images.length === 0) {
+      const fallbackMatches = [...html.matchAll(/<img([^>]+)>/gi)];
+      for (const m of fallbackMatches) {
+        const attrs = m[1];
+        const srcMatch = attrs.match(/(?:data-original|data-src|data-url|src)=["']([^"']*(?:mgread\.io|\/manga\/)[^"']*)["']/i);
+        if (srcMatch) {
+          let src = srcMatch[1].trim();
+          if (src.startsWith("data:image")) continue;
+          if (!src.startsWith("http")) {
+            src = `${base}${src.startsWith("/") ? "" : "/"}${src}`;
+          }
+          if (!seen.has(src)) {
+            seen.add(src);
+            images.push(src);
+          }
+        }
+      }
+    }
+
     return {
       urls: images,
+      headers: {
+        Referer: `${base}/`,
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+      },
     };
   }
 }
