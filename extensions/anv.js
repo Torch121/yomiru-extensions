@@ -1,6 +1,6 @@
 // ==YomiruExtension==
 // @name         Anv
-// @version      v1.0.0
+// @version      v1.0.1
 // @author       Yomiru
 // @lang         en
 // @license      MIT
@@ -255,11 +255,33 @@ export default class extends Extension {
 
     // Step 1: Request watch page to acquire shiro_watch session cookie
     const watchPageUrl = `/anime/${slug}-episode-${episodeNumber}`;
-    await this.req(watchPageUrl, {
+    const pageRes = await this.req(watchPageUrl, {
+      fullResponse: true,
       headers: {
         Referer: `${base}/anime/${slug}`,
       },
     });
+
+    let cookie = "";
+    const pageObj = typeof pageRes === "string" ? this.parseJson(pageRes) : pageRes;
+    const pageHeaders = pageObj?.headers;
+    const setCookie = pageHeaders?.["set-cookie"] || pageHeaders?.["Set-Cookie"];
+    if (setCookie) {
+      const match = String(setCookie).match(/shiro_watch=([^;]+)/);
+      if (match) {
+        cookie = match[1];
+      }
+    }
+
+    const defaultHeaders = {
+      Referer: `${base}/`,
+      Origin: base,
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+    };
+    if (cookie) {
+      defaultHeaders["Cookie"] = `shiro_watch=${cookie}`;
+    }
 
     // Step 2: Request stream sources
     const epRes = await this.req("/api/episode", {
@@ -267,6 +289,7 @@ export default class extends Extension {
       headers: {
         "Content-Type": "application/json",
         Referer: `${base}${watchPageUrl}`,
+        ...(cookie ? { Cookie: `shiro_watch=${cookie}` } : {}),
       },
       data: JSON.stringify({
         anilistId,
@@ -289,6 +312,7 @@ export default class extends Extension {
             url: streamUrl,
             quality: "Auto",
             isM3U8: true,
+            headers: { ...defaultHeaders },
           });
 
           if (Array.isArray(src.tracks)) {
@@ -314,11 +338,7 @@ export default class extends Extension {
     return {
       type: "hls",
       url: primaryUrl,
-      headers: {
-        Referer: `${base}/`,
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
-      },
+      headers: defaultHeaders,
       subtitles,
       sources,
     };

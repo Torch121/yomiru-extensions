@@ -1,6 +1,6 @@
 // ==YomiruExtension==
 // @name         Senshi
-// @version      v1.0.0
+// @version      v1.0.1
 // @author       Yomiru
 // @lang         en
 // @license      MIT
@@ -233,12 +233,37 @@ export default class extends Extension {
 
   async _resolveVidcloud(remoteSourceId) {
     try {
+      if (typeof globalThis.fetch === "function" && !globalThis.fetch.__senshiWrapped) {
+        const origFetch = globalThis.fetch;
+        globalThis.fetch = function (resource, init = {}) {
+          let customHeaders = {};
+          if (init.headers) {
+            if (typeof init.headers.forEach === "function") {
+              init.headers.forEach((v, k) => {
+                customHeaders[k] = v;
+              });
+            } else if (typeof init.headers === "object") {
+              customHeaders = { ...init.headers };
+            }
+          }
+          customHeaders["Origin"] = "https://senshi.to";
+          customHeaders["Referer"] = "https://senshi.to/";
+          if (!customHeaders["User-Agent"] && !customHeaders["user-agent"]) {
+            customHeaders["User-Agent"] =
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36";
+          }
+          return origFetch(resource, { ...init, headers: customHeaders });
+        };
+        globalThis.fetch.__senshiWrapped = true;
+      }
+
       if (!globalThis.__oct) {
         const vendorRes = await this.request("https://cdn.vidcloud.se/vjs/vendor.js", {
           headers: {
             "User-Agent":
               "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
             Referer: "https://senshi.to/",
+            Origin: "https://senshi.to",
           },
         });
         const vendorJs = typeof vendorRes === "string" ? vendorRes : "";
@@ -320,9 +345,22 @@ export default class extends Extension {
     const sources = [];
     const subtitles = [];
     const seenUrls = new Set();
+    const defaultHeaders = {
+      Referer: `${base}/`,
+      Origin: base,
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+    };
 
     for (const embed of embeds) {
-      const label = embed.status || "Sub";
+      let label = embed.status || "Sub";
+      if (embed.audio_language) {
+        label = embed.audio_language.toLowerCase().includes("dub") ? "Dub" : "Sub";
+      } else if (label.toLowerCase() === "sub" || label.toLowerCase() === "hardsub") {
+        label = "Sub";
+      } else if (label.toLowerCase().includes("dub")) {
+        label = "Dub";
+      }
 
       // Attempt Vidcloud resolution
       if (embed.remote_source_id) {
@@ -335,13 +373,14 @@ export default class extends Extension {
             url: streamUrl,
             quality: "1080p",
             isM3U8: true,
+            headers: defaultHeaders,
           });
         }
 
         if (Array.isArray(resolved?.tracks)) {
           for (const tr of resolved.tracks) {
             const subUrl = tr.vtt_url || tr.url;
-            if (subUrl && subUrl.endsWith(".vtt")) {
+            if (subUrl && (subUrl.endsWith(".vtt") || subUrl.includes(".vtt"))) {
               subtitles.push({
                 title: tr.label || "English",
                 url: subUrl,
@@ -351,16 +390,22 @@ export default class extends Extension {
           }
         }
       }
+    }
 
-      // Fallback: embed mirror
-      if (embed.url && !seenUrls.has(embed.url)) {
-        seenUrls.add(embed.url);
-        sources.push({
-          name: `Senshi - ${label} (Mirror)`,
-          url: embed.url,
-          quality: "Auto",
-          isM3U8: true,
-        });
+    // If no Vidcloud stream was resolved, check if any embed has a valid mirror
+    if (sources.length === 0) {
+      for (const embed of embeds) {
+        const label = embed.status || "Mirror";
+        if (embed.url && !embed.url.includes("anidap.biz") && !seenUrls.has(embed.url)) {
+          seenUrls.add(embed.url);
+          sources.push({
+            name: `Senshi - ${label} (Mirror)`,
+            url: embed.url,
+            quality: "Auto",
+            isM3U8: true,
+            headers: defaultHeaders,
+          });
+        }
       }
     }
 
@@ -370,18 +415,14 @@ export default class extends Extension {
         url: `${base}/watch/${pubId}/${episodeNumber}`,
         quality: "Auto",
         isM3U8: true,
+        headers: defaultHeaders,
       });
     }
 
     return {
       type: "hls",
       url: sources[0].url,
-      headers: {
-        Referer: `${base}/`,
-        Origin: base,
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
-      },
+      headers: defaultHeaders,
       subtitles,
       sources,
     };

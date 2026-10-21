@@ -122,7 +122,7 @@
   {
     "package": "to.anv",
     "name": "Anv",
-    "version": "v1.0.0",
+    "version": "v1.0.1",
     "author": "Yomiru",
     "lang": "en",
     "license": "MIT",
@@ -152,7 +152,7 @@
   {
     "package": "si.kagane",
     "name": "Kagane",
-    "version": "v1.0.0",
+    "version": "v1.0.1",
     "author": "Yomiru",
     "lang": "all",
     "license": "MIT",
@@ -302,7 +302,7 @@
   {
     "package": "com.otakuarab",
     "name": "Otaku Arab",
-    "version": "v1.0.0",
+    "version": "v1.0.1",
     "author": "Yomiru",
     "lang": "ar",
     "license": "MIT",
@@ -317,7 +317,7 @@
   {
     "package": "to.senshi",
     "name": "Senshi",
-    "version": "v1.0.0",
+    "version": "v1.0.1",
     "author": "Yomiru",
     "lang": "en",
     "license": "MIT",

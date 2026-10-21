@@ -1,6 +1,6 @@
 // ==YomiruExtension==
 // @name         Kagane
-// @version      v1.0.0
+// @version      v1.0.1
 // @author       Yomiru
 // @lang         all
 // @license      MIT
@@ -263,7 +263,8 @@ export default class extends Extension {
 
     const imageUrls = pages.map((page) => {
       const pageId = page.page_id;
-      return `${cacheUrl}/api/v2/books/page/${bookId}/${pageId}.jpg?token=${encodeURIComponent(accessToken)}`;
+      const ext = page.ext || "webp";
+      return `${cacheUrl}/api/v2/books/page/datasaver/${bookId}/${pageId}.${ext}?token=${encodeURIComponent(accessToken)}`;
     });
 
     return {

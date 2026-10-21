@@ -1,6 +1,6 @@
 // ==YomiruExtension==
 // @name         Otaku Arab
-// @version      v1.0.0
+// @version      v1.0.1
 // @author       Yomiru
 // @lang         ar
 // @license      MIT
@@ -262,27 +262,80 @@ export default class extends Extension {
 
     const sources = [];
 
-    // 1. OK.ru server
+    // 1. MP4Upload server - Direct video extraction
+    if (epItem.FRLink) {
+      let directMp4 = null;
+      try {
+        const mp4Html = await this.request(`https://www.mp4upload.com/embed-${epItem.FRLink}.html`, {
+          headers: {
+            "User-Agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+            Referer: "https://otakuarab.com/",
+          },
+        });
+        const htmlStr = typeof mp4Html === "string" ? mp4Html : (mp4Html?.body || "");
+        const match =
+          htmlStr.match(/player\.src\(\s*(?:\{\s*src\s*:\s*)?["'](https?:[^"']+\.mp4[^"']*)["']/i) ||
+          htmlStr.match(/src:\s*["'](https?:[^"']+\.mp4[^"']*)["']/i) ||
+          htmlStr.match(/https?:\/\/[a-zA-Z0-9_.:-]+\.mp4upload\.com:[0-9]+\/d\/[^\s"'<>]+\/video\.mp4/i);
+        if (match) {
+          directMp4 = match[1] || match[0];
+        }
+      } catch (_) {}
+
+      if (directMp4) {
+        sources.push({
+          name: "MP4Upload (Direct Video)",
+          url: directMp4,
+          quality: "720p",
+          type: "mp4",
+          isM3U8: false,
+          headers: {
+            Referer: "https://www.mp4upload.com/",
+            "User-Agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+          },
+        });
+      } else {
+        sources.push({
+          name: "MP4Upload (Embed)",
+          url: `https://www.mp4upload.com/embed-${epItem.FRLink}.html`,
+          quality: "Auto",
+          type: "embed",
+          isEmbed: true,
+          requiresBrowser: true,
+          isM3U8: false,
+        });
+      }
+    }
+
+    // 2. OK.ru server
     if (epItem.OKLink) {
       sources.push({
         name: "OK.ru (Embed)",
         url: `https://ok.ru/videoembed/${epItem.OKLink}`,
         quality: "Auto",
+        type: "embed",
+        isEmbed: true,
+        requiresBrowser: true,
         isM3U8: false,
       });
     }
 
-    // 2. MP4Upload server
-    if (epItem.FRLink) {
+    // 3. Google Drive server
+    if (epItem.GDLink) {
       sources.push({
-        name: "MP4Upload (Embed)",
-        url: `https://www.mp4upload.com/embed-${epItem.FRLink}.html`,
+        name: "Google Drive (Embed)",
+        url: `https://drive.google.com/file/d/${epItem.GDLink}/preview`,
         quality: "Auto",
+        type: "embed",
+        isEmbed: true,
+        requiresBrowser: true,
         isM3U8: false,
       });
     }
 
-    // 3. MEGA server
+    // 4. MEGA server
     if (epItem.MALink && epItem.MALink.includes("!")) {
       const [n, i] = epItem.MALink.split("!");
       if (n && i) {
@@ -290,28 +343,22 @@ export default class extends Extension {
           name: "MEGA (Embed)",
           url: `https://mega.nz/embed/${n}#${i}`,
           quality: "Auto",
+          type: "embed",
+          isEmbed: true,
+          requiresBrowser: true,
           isM3U8: false,
         });
       }
-    }
-
-    // 4. Google Drive server
-    if (epItem.GDLink) {
-      sources.push({
-        name: "Google Drive (Embed)",
-        url: `https://drive.google.com/file/d/${epItem.GDLink}/preview`,
-        quality: "Auto",
-        isM3U8: false,
-      });
     }
 
     if (sources.length === 0) {
       throw new Error(`No streaming servers found for ${animeId} episode ${episodeNumber}`);
     }
 
+    const first = sources[0];
     return {
-      type: "hls",
-      url: sources[0].url,
+      type: first.type || (first.isM3U8 ? "hls" : "embed"),
+      url: first.url,
       headers: {
         Referer: "https://otakuarab.com/",
         "User-Agent":
