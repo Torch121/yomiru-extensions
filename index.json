@@ -45,51 +45,6 @@
     "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/animeonsen.js"
   },
   {
-    "package": "org.animerco.det",
-    "name": "Animerco",
-    "version": "v1.0.2",
-    "author": "Yomiru",
-    "lang": "ar",
-    "license": "MIT",
-    "type": "bangumi",
-    "webSite": "https://det.animerco.org",
-    "nsfw": false,
-    "icon": "https://det.animerco.org/wp-content/uploads/2024/03/favicon-16x16-1.png",
-    "description": "مشاهدة وتحميل مسلسلات وأفلام الأنمي المترجمة أون لاين بجودة عالية عبر انمي ركو (Animerco)",
-    "filename": "animerco.js",
-    "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/animerco.js"
-  },
-  {
-    "package": "site.animesaga",
-    "name": "AnimeSaga",
-    "version": "v1.0.0",
-    "author": "Yomiru",
-    "lang": "en",
-    "license": "MIT",
-    "type": "bangumi",
-    "webSite": "https://animesaga.net",
-    "nsfw": false,
-    "icon": "https://animesaga.net/favicon.ico",
-    "description": "Watch subbed and dubbed anime in HD quality on AnimeSaga",
-    "filename": "animesaga.js",
-    "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/animesaga.js"
-  },
-  {
-    "package": "ani.gogo",
-    "name": "AniGoGo",
-    "version": "v0.0.5",
-    "author": "OshekharO",
-    "lang": "en",
-    "license": "MIT",
-    "type": "bangumi",
-    "webSite": "https://animex.one",
-    "nsfw": false,
-    "icon": "https://anilist.co/img/icons/apple-touch-icon.png",
-    "description": "AniGoGo provider with multi-source anime streaming.",
-    "filename": "animex.js",
-    "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/animex.js"
-  },
-  {
     "package": "pm.ani",
     "name": "Ani.pm",
     "version": "v1.0.0",
@@ -300,21 +255,6 @@
     "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/nyaa.js"
   },
   {
-    "package": "com.otakuarab",
-    "name": "Otaku Arab",
-    "version": "v1.0.1",
-    "author": "Yomiru",
-    "lang": "ar",
-    "license": "MIT",
-    "type": "bangumi",
-    "webSite": "https://otakuarab.com",
-    "nsfw": false,
-    "icon": "https://otakuarab.com/favicon.ico",
-    "description": "مشاهدة أحدث مسلسلات وأفلام الأنمي المترجمة أون لاين عبر موقع أوتاكو عرب (Otaku Arab)",
-    "filename": "otakuarab.js",
-    "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/otakuarab.js"
-  },
-  {
     "package": "to.senshi",
     "name": "Senshi",
     "version": "v1.0.1",
@@ -343,20 +283,5 @@
     "description": "Anime torrent indexer providing high-speed BitTorrent and Magnet streams from TsukiHime (tsukihime.org).",
     "filename": "tsukihime.js",
     "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/tsukihime.js"
-  },
-  {
-    "package": "site.witanime",
-    "name": "WitAnime",
-    "version": "v1.1.1",
-    "author": "Yomiru",
-    "lang": "ar",
-    "license": "MIT",
-    "type": "bangumi",
-    "webSite": "https://witanime.site",
-    "nsfw": false,
-    "icon": "https://witanime.site/assets/images/favicon.ico",
-    "description": "مشاهدة وتحميل أفضل مسلسلات وأفلام الأنمي المترجمة أون لاين بجودة عالية عبر WitAnime",
-    "filename": "witanime.js",
-    "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/witanime.js"
   }
 ]
