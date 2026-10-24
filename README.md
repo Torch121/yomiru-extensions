@@ -2,7 +2,7 @@
 
 Official remote extension catalog for [Yomiru](https://github.com/Torch121/Yomiru).
 
-> **Last Synced**: 2026-10-24 13:33 UTC  
+> **Last Synced**: 2026-10-24 14:21 UTC  
 > **Repository**: `Torch121/yomiru-extensions` (branch: `main`)  
 > **Manifest URL**: `https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/index.json`
 

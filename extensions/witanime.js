@@ -133,12 +133,20 @@ export default class extends Extension {
     const seenUrls = new Set();
     if (!html || typeof html !== "string") return results;
 
-    const linkRegex = /<a[^>]*href=['"]([^'"]*\/anime\/[^'"]*)['"][^>]*>([\s\S]*?)<\/a>/gi;
+    const linkRegex = /<a[^>]*href=['"]([^'"]*\/(?:anime|movie)\/[^'"]*)['"][^>]*>([\s\S]*?)<\/a>/gi;
     let match;
 
     while ((match = linkRegex.exec(html)) !== null) {
       const url = match[1];
-      if (seenUrls.has(url) || url.endsWith("/anime/") || url.endsWith("/anime")) continue;
+      if (
+        seenUrls.has(url) ||
+        url.endsWith("/anime/") ||
+        url.endsWith("/anime") ||
+        url.endsWith("/movie/") ||
+        url.endsWith("/movie")
+      ) {
+        continue;
+      }
       seenUrls.add(url);
 
       const block = match[2];
@@ -154,16 +162,16 @@ export default class extends Extension {
         title = this._cleanText(h3Match[1]);
       } else {
         const altMatch = block.match(/alt=['"]([^'"]+)['"]/i);
-        if (altMatch) {
+        if (altMatch && altMatch[1].trim()) {
           title = this._cleanText(altMatch[1]);
         } else {
           const text = this._cleanText(block);
-          title = text.replace(/^(?:TV|Movie|Special|ONA|OVA)\s*/i, "").replace(/\b(19\d\d|20\d\d)\b.*$/, "").trim();
+          title = text.replace(/^(?:TV|Movie|Special|ONA|OVA|فيلم|فلم)\s*/i, "").replace(/\b(19\d\d|20\d\d)\b.*$/, "").trim();
         }
       }
 
       const fullBlockText = this._cleanText(block);
-      let type = "TV";
+      let type = url.includes("/movie/") ? "Movie" : "TV";
       if (/Special|خاصة/i.test(fullBlockText)) type = "Special";
       else if (/Movie|فيلم|فلم/i.test(fullBlockText)) type = "Movie";
       else if (/ONA|أونا/i.test(fullBlockText)) type = "ONA";
@@ -186,9 +194,20 @@ export default class extends Extension {
 
   // 4. Anime Details & Episodes
   async detail(url) {
-    const fullUrl = url.startsWith("http") ? url : `${this.baseUrl}${url.startsWith("/") ? "" : "/"}${url}`;
-    const res = await this.req(fullUrl);
-    const html = typeof res === "string" ? res : (res && res.body) || "";
+    let fullUrl = url.startsWith("http") ? url : `${this.baseUrl}${url.startsWith("/") ? "" : "/"}${url}`;
+    let res = await this.req(fullUrl);
+    let html = typeof res === "string" ? res : (res && res.body) || "";
+
+    // If /anime/ returned 404 or missing, try /movie/ fallback
+    if ((!html || html.includes("404") || html.includes("الصفحة غير موجودة")) && fullUrl.includes("/anime/")) {
+      const movieUrl = fullUrl.replace("/anime/", "/movie/");
+      const movieRes = await this.req(movieUrl);
+      const movieHtml = typeof movieRes === "string" ? movieRes : (movieRes && movieRes.body) || "";
+      if (movieHtml && !movieHtml.includes("404") && !movieHtml.includes("الصفحة غير موجودة")) {
+        fullUrl = movieUrl;
+        html = movieHtml;
+      }
+    }
 
     let title = "";
     let desc = "";
@@ -254,6 +273,20 @@ export default class extends Extension {
         name: epText && epText !== String(epNum) ? epText : `الحلقة ${epNum}`,
         url: epUrl,
       });
+    }
+
+    // Movie fallback: If no episode cards found, check for the main movie watch link
+    if (episodes.length === 0) {
+      const movieWatchMatch =
+        html.match(/href=['"]([^'"]*\/watch\/movie\/[^'"]*)['"]/i) ||
+        html.match(/href=['"]([^'"]*\/watch\/[^'"]*)['"][^>]*>[\s\S]*?شاهد الآن/i);
+      if (movieWatchMatch) {
+        episodes.push({
+          num: 1,
+          name: "الفيلم",
+          url: movieWatchMatch[1],
+        });
+      }
     }
 
     episodes.sort((a, b) => a.num - b.num);
@@ -403,9 +436,14 @@ export default class extends Extension {
     const mSources = html.match(/sourcesUrl:\s*['"]([^'"]+)['"]/i);
     let sourcesUrl = mSources ? mSources[1].replace(/\\\//g, "/") : null;
     if (!sourcesUrl) {
-      const mSlug = fullUrl.match(/\/watch\/([^/]+)\/(\d+)/);
-      if (mSlug) {
-        sourcesUrl = `/watch/${mSlug[1]}/${mSlug[2]}/sources`;
+      const mMovieSlug = fullUrl.match(/\/watch\/movie\/([^/]+)/);
+      if (mMovieSlug) {
+        sourcesUrl = `/watch/movie/${mMovieSlug[1]}/sources`;
+      } else {
+        const mSlug = fullUrl.match(/\/watch\/([^/]+)\/(\d+)/);
+        if (mSlug) {
+          sourcesUrl = `/watch/${mSlug[1]}/${mSlug[2]}/sources`;
+        }
       }
     }
 
