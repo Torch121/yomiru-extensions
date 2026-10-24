@@ -1,6 +1,6 @@
 // ==YomiruExtension==
 // @name         WitAnime
-// @version      v1.0.0
+// @version      v1.0.3
 // @author       Yomiru
 // @lang         ar
 // @license      MIT
@@ -263,6 +263,69 @@ export default class extends Extension {
     };
   }
 
+  _sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  async _activateAndResolveGate(token, csrfToken, fullWatchUrl) {
+    if (!token || typeof token !== "string" || !/^[a-f0-9]{64}$/i.test(token)) {
+      return null;
+    }
+    try {
+      // Step 1: Unlock token via stream-source
+      const sourceUrl = `${this.baseUrl}/watch/stream-source/${token}`;
+      await this.request(sourceUrl, {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "X-CSRF-TOKEN": csrfToken,
+          Referer: fullWatchUrl,
+          Origin: this.baseUrl,
+        },
+      });
+
+      // Step 2: Fetch stream-gate to get the redirected provider embed URL
+      const gateUrl = `${this.baseUrl}/watch/stream-gate/${token}`;
+      const res = await this.request(gateUrl, {
+        method: "GET",
+        followRedirects: true,
+        fullResponse: true,
+        headers: {
+          Referer: fullWatchUrl,
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        },
+      });
+
+      if (!res) return null;
+
+      let finalUrl = null;
+      let bodyText = "";
+
+      if (typeof res === "object" && res !== null) {
+        if (res.headers && (res.headers.location || res.headers.Location)) {
+          finalUrl = res.headers.location || res.headers.Location;
+        } else if (res.url && res.url !== gateUrl && !res.url.includes("stream-gate")) {
+          finalUrl = res.url;
+        }
+        bodyText = res.body || "";
+      } else if (typeof res === "string") {
+        bodyText = res;
+      }
+
+      if (!finalUrl || finalUrl.includes("stream-gate")) {
+        const ifMatch = bodyText.match(/<iframe[^>]*src=['"]([^'"]+)['"]/i);
+        if (ifMatch && !ifMatch[1].includes("cloudflare") && !ifMatch[1].includes("google")) {
+          finalUrl = ifMatch[1];
+        }
+      }
+
+      return finalUrl;
+    } catch (_) {
+      return null;
+    }
+  }
+
   // 5. Episode Streams & Sources
   async watch(url) {
     const fullUrl = url.startsWith("http") ? url : `${this.baseUrl}${url.startsWith("/") ? "" : "/"}${url}`;
@@ -314,10 +377,10 @@ export default class extends Extension {
             "X-CSRF-TOKEN": csrfToken,
             Referer: fullUrl,
             Origin: this.baseUrl,
-            "X-Requested-With": "XMLHttpRequest",
-            "Content-Type": "application/json",
+            "sec-ch-ua-platform": '"Linux"',
+            "sec-ch-ua": '"Chromium";v="124", "Google Chrome";v="124"',
+            "sec-ch-ua-mobile": "?0",
           },
-          body: JSON.stringify({}),
         });
 
         let manifest = null;
@@ -336,29 +399,107 @@ export default class extends Extension {
         // 1. Streaming Players Manifest
         if (manifest && manifest.players) {
           const players = manifest.players;
-          for (const [qualKey, serverList] of Object.entries(players)) {
-            if (!Array.isArray(serverList)) continue;
-            for (const srv of serverList) {
-              const token = srv.token;
-              const label = srv.label || `Server (${qualKey})`;
-              const embedUrl = `${this.baseUrl}/watch/stream-gate/${token}`;
+          const qualityOrder = ["FHD", "HD", "SD", "4K"];
+          const providerRank = { videa: 1, videas: 2, yonaplay: 3, mp4upload: 4, mega: 5, "4shared": 6 };
 
-              if (label.toLowerCase().includes("videa") && !label.toLowerCase().includes("videas")) {
-                const viStreams = await this._extractVidea(embedUrl);
+          // Build prioritized candidate list across tiers
+          const candidates = [];
+          for (const q of qualityOrder) {
+            const list = players[q] || [];
+            if (!Array.isArray(list)) continue;
+            for (const srv of list) {
+              const labelLower = (srv.label || "").toLowerCase();
+              let rank = 10;
+              for (const [key, r] of Object.entries(providerRank)) {
+                if (labelLower.includes(key)) {
+                  rank = r;
+                  break;
+                }
+              }
+              candidates.push({ ...srv, quality: q, rank });
+            }
+          }
+
+          // Sort: highest quality first, then highest provider rank
+          candidates.sort((a, b) => {
+            const qDiff = qualityOrder.indexOf(a.quality) - qualityOrder.indexOf(b.quality);
+            if (qDiff !== 0) return qDiff;
+            return a.rank - b.rank;
+          });
+
+          // Activate and resolve top candidates (up to 4 to respect 20 req/min rate limit)
+          const toResolve = candidates.slice(0, 4);
+          const remaining = candidates.slice(4);
+
+          for (const srv of toResolve) {
+            const token = srv.token;
+            const qualKey = srv.quality;
+            const label = srv.label || `Server (${qualKey})`;
+
+            const resolvedUrl = await this._activateAndResolveGate(token, csrfToken, fullUrl);
+
+            if (resolvedUrl) {
+              const urlLower = resolvedUrl.toLowerCase();
+              if (urlLower.includes("videa.hu")) {
+                const viStreams = await this._extractVidea(resolvedUrl);
                 for (const s of viStreams) addSource(s);
-              } else if (label.toLowerCase().includes("videas")) {
-                const vsStreams = await this._extractVideas(embedUrl);
+              } else if (urlLower.includes("videas.fr")) {
+                const vsStreams = await this._extractVideas(resolvedUrl);
                 for (const s of vsStreams) addSource(s);
+              } else if (urlLower.includes("yonaplay")) {
+                addSource({
+                  server: `Yonaplay Player (${qualKey})`,
+                  url: resolvedUrl,
+                  type: "hls",
+                  quality: this._normalizeQuality(qualKey),
+                  headers: { Referer: "https://mid.yonaplay.net/" },
+                });
+              } else if (urlLower.includes("mp4upload")) {
+                const mpStreams = await this._extractMp4upload(resolvedUrl, qualKey);
+                for (const s of mpStreams) addSource(s);
+              } else if (urlLower.includes("mega.nz")) {
+                addSource({
+                  server: `Mega Player (${qualKey})`,
+                  url: resolvedUrl,
+                  type: "hls",
+                  quality: this._normalizeQuality(qualKey),
+                  headers: { Referer: "https://mega.nz/" },
+                });
               } else {
                 addSource({
                   server: `${label} (${qualKey})`,
-                  url: embedUrl,
-                  type: "hls",
+                  url: resolvedUrl,
+                  type: resolvedUrl.includes(".m3u8") ? "hls" : "mp4",
                   quality: this._normalizeQuality(qualKey),
                   headers: { Referer: `${this.baseUrl}/` },
                 });
               }
+            } else {
+              // Fallback to gate URL
+              addSource({
+                server: `${label} (${qualKey})`,
+                url: `${this.baseUrl}/watch/stream-gate/${token}`,
+                type: "hls",
+                quality: this._normalizeQuality(qualKey),
+                headers: { Referer: `${this.baseUrl}/` },
+              });
             }
+
+            // Spacing to keep well within 20 req/min rate limit
+            await this._sleep(200);
+          }
+
+          // Add remaining servers as fallback gate links
+          for (const srv of remaining) {
+            const qualKey = srv.quality;
+            const label = srv.label || `Server (${qualKey})`;
+            addSource({
+              server: `${label} (${qualKey})`,
+              url: `${this.baseUrl}/watch/stream-gate/${srv.token}`,
+              type: "hls",
+              quality: this._normalizeQuality(qualKey),
+              headers: { Referer: `${this.baseUrl}/` },
+            });
           }
         }
 
@@ -450,10 +591,52 @@ export default class extends Extension {
       });
     }
 
+    if (resolvedSources.length === 0) {
+      return {
+        error:
+          "تعذّر تحميل سيرفرات المشاهدة من موقع WitAnime لهذا العنوان. يُرجى التحقق من اتصالك والمحاولة لاحقاً.",
+        sources: [],
+        subtitles,
+      };
+    }
+
     return {
       sources: resolvedSources,
       subtitles,
     };
+  }
+
+  // Dedicated MP4Upload Extractor
+  async _extractMp4upload(embedUrl, quality = "HD") {
+    const streams = [];
+    try {
+      const res = await this.req(embedUrl, {
+        headers: { Referer: "https://witanime.site/" },
+      });
+      const html = typeof res === "string" ? res : (res && res.body) || "";
+      const srcMatch =
+        html.match(/player\.src\(["']([^"']+\.mp4[^"']*)["']\)/i) ||
+        html.match(/src:\s*["']([^"']+\.mp4[^"']*)["']/i) ||
+        html.match(/["'](https?:\/\/[^"']+\.mp4[^"']*)["']/i);
+      if (srcMatch) {
+        streams.push({
+          server: `MP4Upload Direct (${this._normalizeQuality(quality)})`,
+          quality: this._normalizeQuality(quality),
+          url: srcMatch[1],
+          type: "mp4",
+          headers: { Referer: "https://www.mp4upload.com/" },
+        });
+      } else {
+        streams.push({
+          server: `MP4Upload Player (${this._normalizeQuality(quality)})`,
+          quality: this._normalizeQuality(quality),
+          url: embedUrl,
+          type: "mp4",
+          headers: { Referer: "https://www.mp4upload.com/" },
+        });
+      }
+    } catch (_) {}
+    return streams;
   }
 
   // Dedicated Videa (videa.hu) Extractor
