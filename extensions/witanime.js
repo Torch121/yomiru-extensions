@@ -280,6 +280,15 @@ export default class extends Extension {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
+  _isRateLimit(text) {
+    if (!text || typeof text !== "string") return false;
+    return (
+      text.includes("طلبات كثيرة") ||
+      text.includes("Too Many Requests") ||
+      (text.length < 6000 && text.includes("429"))
+    );
+  }
+
   async _activateAndResolveGate(token, csrfToken, fullWatchUrl) {
     if (!token || typeof token !== "string" || !/^[a-f0-9]{64}$/i.test(token)) {
       return null;
@@ -287,69 +296,56 @@ export default class extends Extension {
     try {
       // Step 1: Unlock token via stream-source
       const sourceUrl = `${this.baseUrl}/watch/stream-source/${token}`;
-      await this.request(sourceUrl, {
+      const srcRes = await this.request(sourceUrl, {
         method: "POST",
+        fullResponse: true,
         headers: {
           Accept: "application/json",
           "X-CSRF-TOKEN": csrfToken,
           Referer: fullWatchUrl,
           Origin: this.baseUrl,
           "User-Agent":
-            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-          "sec-ch-ua": '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
-          "sec-ch-ua-mobile": "?0",
-          "sec-ch-ua-platform": '"Linux"',
-          "sec-fetch-dest": "empty",
-          "sec-fetch-mode": "cors",
-          "sec-fetch-site": "same-origin",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
         },
       });
 
-      // Step 2: Fetch stream-gate to get the redirected provider embed URL
+      if (srcRes && (srcRes.statusCode === 429 || srcRes.status === 429)) {
+        throw new Error("RATE_LIMITED");
+      }
+
+      // Step 2: Fetch stream-gate to capture 302 Location redirect WITHOUT cross-origin header forward
       const gateUrl = `${this.baseUrl}/watch/stream-gate/${token}`;
       const res = await this.request(gateUrl, {
         method: "GET",
-        followRedirects: true,
+        followRedirects: false, // Disables automatic redirect follow to preserve Location header and avoid cross-origin 404s
         fullResponse: true,
         headers: {
           Referer: fullWatchUrl,
           "User-Agent":
-            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-          "sec-ch-ua": '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
-          "sec-ch-ua-mobile": "?0",
-          "sec-ch-ua-platform": '"Linux"',
-          "sec-fetch-dest": "iframe",
-          "sec-fetch-mode": "navigate",
-          "sec-fetch-site": "same-origin",
-          Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
         },
       });
 
       if (!res) return null;
+      if (res.statusCode === 429 || res.status === 429) {
+        throw new Error("RATE_LIMITED");
+      }
 
-      let finalUrl = null;
-      let bodyText = "";
-
+      let redirectUrl = null;
       if (typeof res === "object" && res !== null) {
-        if (res.headers && (res.headers.location || res.headers.Location)) {
-          finalUrl = res.headers.location || res.headers.Location;
-        } else if (res.url && res.url !== gateUrl && !res.url.includes("stream-gate")) {
-          finalUrl = res.url;
-        }
-        bodyText = res.body || "";
-      } else if (typeof res === "string") {
-        bodyText = res;
+        const h = res.headers || {};
+        redirectUrl = h.location || h.Location || "";
       }
 
-      if (!finalUrl || finalUrl.includes("stream-gate")) {
-        const ifMatch = bodyText.match(/<iframe[^>]*src=['"]([^'"]+)['"]/i);
-        if (ifMatch && !ifMatch[1].includes("cloudflare") && !ifMatch[1].includes("google")) {
-          finalUrl = ifMatch[1];
-        }
+      if (redirectUrl && typeof redirectUrl === "string") {
+        return redirectUrl.startsWith("http")
+          ? redirectUrl
+          : `${this.baseUrl}${redirectUrl.startsWith("/") ? "" : "/"}${redirectUrl}`;
       }
 
-      return finalUrl;
-    } catch (_) {
+      return null;
+    } catch (e) {
+      if (e && e.message === "RATE_LIMITED") throw e;
       return null;
     }
   }
@@ -357,8 +353,28 @@ export default class extends Extension {
   // 5. Episode Streams & Sources
   async watch(url) {
     const fullUrl = url.startsWith("http") ? url : `${this.baseUrl}${url.startsWith("/") ? "" : "/"}${url}`;
+
+    if (!this._streamCache) {
+      this._streamCache = new Map();
+    }
+    const now = Date.now();
+    if (this._streamCache.has(fullUrl)) {
+      const cached = this._streamCache.get(fullUrl);
+      if (now - cached.timestamp < 180000 && cached.data && cached.data.sources && cached.data.sources.length > 0) {
+        return cached.data;
+      }
+    }
+
     const res = await this.req(fullUrl);
     const html = typeof res === "string" ? res : (res && res.body) || "";
+
+    if (this._isRateLimit(html)) {
+      return {
+        error: "تم تجاوز حد الطلبات من موقع WitAnime مؤقتاً (429). يُرجى الانتظار دقيقة والمحاولة مجدداً.",
+        sources: [],
+        subtitles: [],
+      };
+    }
 
     const resolvedSources = [];
     const subtitles = [];
@@ -406,13 +422,7 @@ export default class extends Extension {
             Referer: fullUrl,
             Origin: this.baseUrl,
             "User-Agent":
-              "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-            "sec-ch-ua": '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
-            "sec-ch-ua-mobile": "?0",
-            "sec-ch-ua-platform": '"Linux"',
-            "sec-fetch-dest": "empty",
-            "sec-fetch-mode": "cors",
-            "sec-fetch-site": "same-origin",
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
           },
         });
 
@@ -460,99 +470,72 @@ export default class extends Extension {
             return a.rank - b.rank;
           });
 
-          // Activate and resolve top candidates (up to 4 to respect 20 req/min rate limit)
-          const toResolve = candidates.slice(0, 4);
-          const remaining = candidates.slice(4);
+          // Resolve top prioritized servers (stop early once 2 working streams are found to prevent 429)
+          let successfulStreamsCount = 0;
+          for (const srv of candidates) {
+            if (successfulStreamsCount >= 2) break;
 
-          for (const srv of toResolve) {
             const token = srv.token;
             const qualKey = srv.quality;
             const label = srv.label || `Server (${qualKey})`;
 
-            const resolvedUrl = await this._activateAndResolveGate(token, csrfToken, fullUrl);
+            try {
+              const resolvedUrl = await this._activateAndResolveGate(token, csrfToken, fullUrl);
 
-            if (resolvedUrl) {
-              const urlLower = resolvedUrl.toLowerCase();
-              if (urlLower.includes("videa.hu")) {
-                const viStreams = await this._extractVidea(resolvedUrl);
-                for (const s of viStreams) addSource(s);
-              } else if (urlLower.includes("videas.fr")) {
-                const vsStreams = await this._extractVideas(resolvedUrl);
-                for (const s of vsStreams) addSource(s);
-              } else if (urlLower.includes("yonaplay")) {
-                addSource({
-                  server: `Yonaplay Player (${qualKey})`,
-                  url: resolvedUrl,
-                  type: "hls",
-                  quality: this._normalizeQuality(qualKey),
-                  headers: { Referer: "https://mid.yonaplay.net/" },
-                });
-              } else if (urlLower.includes("mp4upload")) {
-                const mpStreams = await this._extractMp4upload(resolvedUrl, qualKey);
-                for (const s of mpStreams) addSource(s);
-              } else if (urlLower.includes("mega.nz")) {
-                addSource({
-                  server: `Mega Player (${qualKey})`,
-                  url: resolvedUrl,
-                  type: "hls",
-                  quality: this._normalizeQuality(qualKey),
-                  headers: { Referer: "https://mega.nz/" },
-                });
-              } else {
-                addSource({
-                  server: `${label} (${qualKey})`,
-                  url: resolvedUrl,
-                  type: resolvedUrl.includes(".m3u8") ? "hls" : "mp4",
-                  quality: this._normalizeQuality(qualKey),
-                  headers: { Referer: `${this.baseUrl}/` },
-                });
+              if (resolvedUrl) {
+                const countBefore = resolvedSources.length;
+                const urlLower = resolvedUrl.toLowerCase();
+                if (urlLower.includes("videa.hu")) {
+                  const viStreams = await this._extractVidea(resolvedUrl);
+                  for (const s of viStreams) addSource(s);
+                } else if (urlLower.includes("videas.fr")) {
+                  const vsStreams = await this._extractVideas(resolvedUrl);
+                  for (const s of vsStreams) addSource(s);
+                } else if (urlLower.includes("yonaplay")) {
+                  addSource({
+                    server: `Yonaplay Player (${qualKey})`,
+                    url: resolvedUrl,
+                    type: "hls",
+                    quality: this._normalizeQuality(qualKey),
+                    headers: { Referer: "https://mid.yonaplay.net/" },
+                  });
+                } else if (urlLower.includes("mp4upload")) {
+                  const mpStreams = await this._extractMp4upload(resolvedUrl, qualKey);
+                  for (const s of mpStreams) addSource(s);
+                } else if (urlLower.includes("mega.nz")) {
+                  addSource({
+                    server: `Mega Player (${qualKey})`,
+                    url: resolvedUrl,
+                    type: "hls",
+                    quality: this._normalizeQuality(qualKey),
+                    headers: { Referer: "https://mega.nz/" },
+                  });
+                } else {
+                  addSource({
+                    server: `${label} (${qualKey})`,
+                    url: resolvedUrl,
+                    type: resolvedUrl.includes(".m3u8") ? "hls" : "mp4",
+                    quality: this._normalizeQuality(qualKey),
+                    headers: { Referer: `${this.baseUrl}/` },
+                  });
+                }
+
+                if (resolvedSources.length > countBefore) {
+                  successfulStreamsCount++;
+                }
               }
-            } else {
-              // Fallback to gate URL
-              addSource({
-                server: `${label} (${qualKey})`,
-                url: `${this.baseUrl}/watch/stream-gate/${token}`,
-                type: "hls",
-                quality: this._normalizeQuality(qualKey),
-                headers: { Referer: `${this.baseUrl}/` },
-              });
+            } catch (err) {
+              if (err && err.message === "RATE_LIMITED") {
+                return {
+                  error: "تم تجاوز حد الطلبات من موقع WitAnime مؤقتاً (429). يُرجى الانتظار دقيقة والمحاولة مجدداً.",
+                  sources: resolvedSources,
+                  subtitles,
+                };
+              }
             }
 
-            // Spacing to keep well within 20 req/min rate limit
-            await this._sleep(200);
-          }
-
-          // Add remaining servers as fallback gate links
-          for (const srv of remaining) {
-            const qualKey = srv.quality;
-            const label = srv.label || `Server (${qualKey})`;
-            addSource({
-              server: `${label} (${qualKey})`,
-              url: `${this.baseUrl}/watch/stream-gate/${srv.token}`,
-              type: "hls",
-              quality: this._normalizeQuality(qualKey),
-              headers: { Referer: `${this.baseUrl}/` },
-            });
-          }
-        }
-
-        // 2. Download Mirrors Manifest
-        if (manifest && manifest.downloads) {
-          const downloads = manifest.downloads;
-          for (const [qualKey, dlList] of Object.entries(downloads)) {
-            if (!Array.isArray(dlList)) continue;
-            for (const dl of dlList) {
-              const token = dl.token;
-              const label = dl.label || `Download (${qualKey})`;
-              const downloadGateUrl = `${this.baseUrl}/watch/download-gate/${token}`;
-              addSource({
-                server: `${label} (${qualKey})`,
-                url: downloadGateUrl,
-                type: "mp4",
-                quality: this._normalizeQuality(qualKey),
-                headers: { Referer: `${this.baseUrl}/` },
-              });
-            }
+            // Respectful spacing to stay well within 20 req/min rate limit
+            await this._sleep(350);
           }
         }
       } catch (_) {}
@@ -582,22 +565,7 @@ export default class extends Extension {
       }
     }
 
-    // Fallback B: scan for any direct gates, tokens, or external media links in HTML
-    const gateRegex = /href=['"]([^'"]*\/watch\/(?:stream|download)-gate\/[a-f0-9]{64})['"]/gi;
-    let gMatch;
-    while ((gMatch = gateRegex.exec(html)) !== null) {
-      const gUrl = gMatch[1].startsWith("http") ? gMatch[1] : `${this.baseUrl}${gMatch[1]}`;
-      const isDl = gUrl.includes("download-gate");
-      addSource({
-        server: isDl ? "Download Gate" : "Stream Gate",
-        url: gUrl,
-        type: isDl ? "mp4" : "hls",
-        quality: "HD",
-        headers: { Referer: `${this.baseUrl}/` },
-      });
-    }
-
-    // Fallback C: check for external provider embeds (e.g. 4shared, mega, pixeldrain)
+    // Fallback B: check for external provider embeds (e.g. 4shared, mega, pixeldrain)
     const extRegex = /href=['"](https?:\/\/(?:pixeldrain\.com\/u\/|mp4upload\.com\/|mega\.nz\/|4shared\.com\/)[^'"]+)['"]/gi;
     let extMatch;
     while ((extMatch = extRegex.exec(html)) !== null) {
@@ -633,10 +601,19 @@ export default class extends Extension {
       };
     }
 
-    return {
+    const result = {
       sources: resolvedSources,
       subtitles,
     };
+
+    if (this._streamCache) {
+      this._streamCache.set(fullUrl, {
+        timestamp: Date.now(),
+        data: result,
+      });
+    }
+
+    return result;
   }
 
   // Dedicated MP4Upload Extractor
