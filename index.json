@@ -283,5 +283,20 @@
     "description": "Anime torrent indexer providing high-speed BitTorrent and Magnet streams from TsukiHime (tsukihime.org).",
     "filename": "tsukihime.js",
     "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/tsukihime.js"
+  },
+  {
+    "package": "site.witanime",
+    "name": "WitAnime",
+    "version": "v1.0.0",
+    "author": "Yomiru",
+    "lang": "ar",
+    "license": "MIT",
+    "type": "bangumi",
+    "webSite": "https://witanime.site",
+    "nsfw": false,
+    "icon": "https://witanime.site/favicon.ico",
+    "description": "مشاهدة وتحميل مسلسلات وأفلام الأنمي المترجمة أون لاين بجودات متعددة عبر WitAnime",
+    "filename": "witanime.js",
+    "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/witanime.js"
   }
 ]

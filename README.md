@@ -2,7 +2,7 @@
 
 Official remote extension catalog for [Yomiru](https://github.com/Torch121/Yomiru).
 
-> **Last Synced**: 2026-10-23 20:19 UTC  
+> **Last Synced**: 2026-10-24 11:04 UTC  
 > **Repository**: `Torch121/yomiru-extensions` (branch: `main`)  
 > **Manifest URL**: `https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/index.json`
 
@@ -29,6 +29,7 @@ Official remote extension catalog for [Yomiru](https://github.com/Torch121/Yomir
 | <img src="https://nyaa.si/static/favicon.png" width="28" height="28" /> | **Nyaa** | `si.nyaa` | `v1.0.2` | `bangumi` | ALL | Yomiru | [nyaa.js](./extensions/nyaa.js) |
 | <img src="https://senshi.to/favicon.ico" width="28" height="28" /> | **Senshi** | `to.senshi` | `v1.0.1` | `bangumi` | EN | Yomiru | [senshi.js](./extensions/senshi.js) |
 | <img src="https://tsukihime.org/favicon.ico" width="28" height="28" /> | **TsukiHime** | `org.tsukihime` | `v1.0.0` | `bangumi` | ALL | Yomiru | [tsukihime.js](./extensions/tsukihime.js) |
+| <img src="https://witanime.site/favicon.ico" width="28" height="28" /> | **WitAnime** | `site.witanime` | `v1.0.0` | `bangumi` | AR | Yomiru | [witanime.js](./extensions/witanime.js) |
 
 ## How to Use in Yomiru
 1. Open **Yomiru** on your device.
