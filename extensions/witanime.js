@@ -1,6 +1,6 @@
 // ==YomiruExtension==
 // @name         WitAnime
-// @version      v1.0.3
+// @version      v1.0.4
 // @author       Yomiru
 // @lang         ar
 // @license      MIT
@@ -24,10 +24,13 @@ export default class extends Extension {
       ...options,
       headers: {
         "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+          "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
         Accept:
           "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
         "Accept-Language": "ar,en-US;q=0.9,en;q=0.8",
+        "sec-ch-ua": '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
+        "sec-ch-ua-mobile": "?0",
+        "sec-ch-ua-platform": '"Linux"',
         ...(options.headers || {}),
       },
     });
@@ -117,7 +120,12 @@ export default class extends Extension {
     const path = p > 1 ? `/search?q=${encodeURIComponent(term)}&page=${p}` : `/search?q=${encodeURIComponent(term)}`;
     const res = await this.req(path);
     const html = typeof res === "string" ? res : (res && res.body) || "";
-    return this._parseGrid(html);
+
+    // Isolate actual search results and slice out recommendations section ("قد يعجبك أيضًا")
+    const recIndex = html.indexOf("قد يعجبك أيضًا");
+    const searchHtml = recIndex !== -1 ? html.substring(0, recIndex) : html;
+
+    return this._parseGrid(searchHtml);
   }
 
   _parseGrid(html) {
@@ -141,12 +149,17 @@ export default class extends Extension {
       const cover = imgMatch ? imgMatch[1] : "";
 
       let title = "";
-      const altMatch = block.match(/alt=['"]([^'"]+)['"]/i);
-      if (altMatch) {
-        title = this._cleanText(altMatch[1]);
+      const h3Match = block.match(/<h3[^>]*>([\s\S]*?)<\/h3>/i);
+      if (h3Match) {
+        title = this._cleanText(h3Match[1]);
       } else {
-        const text = this._cleanText(block);
-        title = text.replace(/^(?:TV|Movie|Special|ONA|OVA)\s*/i, "").replace(/\b(19\d\d|20\d\d)\b.*$/, "").trim();
+        const altMatch = block.match(/alt=['"]([^'"]+)['"]/i);
+        if (altMatch) {
+          title = this._cleanText(altMatch[1]);
+        } else {
+          const text = this._cleanText(block);
+          title = text.replace(/^(?:TV|Movie|Special|ONA|OVA)\s*/i, "").replace(/\b(19\d\d|20\d\d)\b.*$/, "").trim();
+        }
       }
 
       const fullBlockText = this._cleanText(block);
@@ -281,6 +294,14 @@ export default class extends Extension {
           "X-CSRF-TOKEN": csrfToken,
           Referer: fullWatchUrl,
           Origin: this.baseUrl,
+          "User-Agent":
+            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+          "sec-ch-ua": '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
+          "sec-ch-ua-mobile": "?0",
+          "sec-ch-ua-platform": '"Linux"',
+          "sec-fetch-dest": "empty",
+          "sec-fetch-mode": "cors",
+          "sec-fetch-site": "same-origin",
         },
       });
 
@@ -293,7 +314,14 @@ export default class extends Extension {
         headers: {
           Referer: fullWatchUrl,
           "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+          "sec-ch-ua": '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
+          "sec-ch-ua-mobile": "?0",
+          "sec-ch-ua-platform": '"Linux"',
+          "sec-fetch-dest": "iframe",
+          "sec-fetch-mode": "navigate",
+          "sec-fetch-site": "same-origin",
+          Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
         },
       });
 
@@ -377,9 +405,14 @@ export default class extends Extension {
             "X-CSRF-TOKEN": csrfToken,
             Referer: fullUrl,
             Origin: this.baseUrl,
-            "sec-ch-ua-platform": '"Linux"',
-            "sec-ch-ua": '"Chromium";v="124", "Google Chrome";v="124"',
+            "User-Agent":
+              "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+            "sec-ch-ua": '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
             "sec-ch-ua-mobile": "?0",
+            "sec-ch-ua-platform": '"Linux"',
+            "sec-fetch-dest": "empty",
+            "sec-fetch-mode": "cors",
+            "sec-fetch-site": "same-origin",
           },
         });
 
