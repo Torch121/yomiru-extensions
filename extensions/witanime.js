@@ -1,6 +1,6 @@
 // ==YomiruExtension==
 // @name         WitAnime
-// @version      v1.0.4
+// @version      v1.0.5
 // @author       Yomiru
 // @lang         ar
 // @license      MIT
@@ -17,20 +17,27 @@ export default class extends Extension {
     return "https://witanime.site";
   }
 
+  get defaultHeaders() {
+    return {
+      "User-Agent":
+        "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Mobile Safari/537.36",
+      "Sec-Ch-Ua":
+        '"Google Chrome";v="155", "Chromium";v="155", "Not(A:Brand";v="24"',
+      "Sec-Ch-Ua-Mobile": "?1",
+      "Sec-Ch-Ua-Platform": '"Android"',
+      Accept:
+        "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+      "Accept-Language": "ar,en-US;q=0.9,en;q=0.8",
+    };
+  }
+
   async req(url, options = {}) {
     const rawUrl = url.startsWith("http") ? url : `${this.baseUrl}${url.startsWith("/") ? "" : "/"}${url}`;
     const cleanUrl = encodeURI(decodeURI(rawUrl));
     return this.request(cleanUrl, {
       ...options,
       headers: {
-        "User-Agent":
-          "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-        Accept:
-          "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-        "Accept-Language": "ar,en-US;q=0.9,en;q=0.8",
-        "sec-ch-ua": '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
-        "sec-ch-ua-mobile": "?0",
-        "sec-ch-ua-platform": '"Linux"',
+        ...this.defaultHeaders,
         ...(options.headers || {}),
       },
     });
@@ -331,14 +338,17 @@ export default class extends Extension {
       const sourceUrl = `${this.baseUrl}/watch/stream-source/${token}`;
       const srcRes = await this.request(sourceUrl, {
         method: "POST",
+        body: "",
         fullResponse: true,
         headers: {
+          ...this.defaultHeaders,
           Accept: "application/json",
           "X-CSRF-TOKEN": csrfToken,
           Referer: fullWatchUrl,
           Origin: this.baseUrl,
-          "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+          "Sec-Fetch-Dest": "empty",
+          "Sec-Fetch-Mode": "cors",
+          "Sec-Fetch-Site": "same-origin",
         },
       });
 
@@ -353,9 +363,16 @@ export default class extends Extension {
         followRedirects: false, // Disables automatic redirect follow to preserve Location header and avoid cross-origin 404s
         fullResponse: true,
         headers: {
+          ...this.defaultHeaders,
+          Host: "witanime.site",
           Referer: fullWatchUrl,
-          "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+          "Upgrade-Insecure-Requests": "1",
+          Accept:
+            "text/html,application/xhtml+xml,application/xml;q=0.9,image/jxl,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+          "Sec-Fetch-Site": "same-origin",
+          "Sec-Fetch-Mode": "navigate",
+          "Sec-Fetch-User": "?1",
+          "Sec-Fetch-Dest": "iframe",
         },
       });
 
@@ -398,7 +415,9 @@ export default class extends Extension {
       }
     }
 
-    const res = await this.req(fullUrl);
+    // Cache-bust page load to negotiate a fresh session and CSRF token
+    const cacheBustUrl = `${fullUrl}${fullUrl.includes("?") ? "&" : "?"}t=${Date.now()}`;
+    const res = await this.req(cacheBustUrl);
     const html = typeof res === "string" ? res : (res && res.body) || "";
 
     if (this._isRateLimit(html)) {
@@ -452,15 +471,22 @@ export default class extends Extension {
         const manifestFullUrl = sourcesUrl.startsWith("http")
           ? sourcesUrl
           : `${this.baseUrl}${sourcesUrl.startsWith("/") ? "" : "/"}${sourcesUrl}`;
+
+        // Human-like delay allowing session cookies and CSRF to register naturally
+        await this._sleep(1200);
+
         const sRes = await this.request(manifestFullUrl, {
           method: "POST",
+          body: "",
           headers: {
+            ...this.defaultHeaders,
             Accept: "application/json",
             "X-CSRF-TOKEN": csrfToken,
             Referer: fullUrl,
             Origin: this.baseUrl,
-            "User-Agent":
-              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+            "Sec-Fetch-Dest": "empty",
+            "Sec-Fetch-Mode": "cors",
+            "Sec-Fetch-Site": "same-origin",
           },
         });
 
@@ -573,7 +599,7 @@ export default class extends Extension {
             }
 
             // Respectful spacing to stay well within 20 req/min rate limit
-            await this._sleep(350);
+            await this._sleep(500);
           }
         }
       } catch (_) {}
