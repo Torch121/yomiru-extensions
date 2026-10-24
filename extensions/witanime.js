@@ -279,9 +279,18 @@ export default class extends Extension {
       resolvedSources.push(src);
     };
 
-    // Extract CSRF token
-    const csrfMatch = html.match(/<meta[^>]*name=['"]csrf-token['"][^>]*content=['"]([^'"]+)['"]/i);
-    const csrfToken = csrfMatch ? csrfMatch[1] : "";
+    // Extract CSRF token (supporting various attribute orders)
+    let csrfToken = "";
+    const mCsrf1 = html.match(/<meta[^>]*name=['"]csrf-token['"][^>]*content=['"]([^'"]+)['"]/i);
+    if (mCsrf1) csrfToken = mCsrf1[1];
+    if (!csrfToken) {
+      const mCsrf2 = html.match(/<meta[^>]*content=['"]([^'"]+)['"][^>]*name=['"]csrf-token['"]/i);
+      if (mCsrf2) csrfToken = mCsrf2[1];
+    }
+    if (!csrfToken) {
+      const mCsrf3 = html.match(/data-csrf=['"]([^'"]+)['"]/i);
+      if (mCsrf3) csrfToken = mCsrf3[1];
+    }
 
     // Extract sourcesUrl from watchPlayer
     const mSources = html.match(/sourcesUrl:\s*['"]([^'"]+)['"]/i);
@@ -295,19 +304,24 @@ export default class extends Extension {
 
     if (sourcesUrl) {
       try {
-        const manifestFullUrl = sourcesUrl.startsWith("http") ? sourcesUrl : `${this.baseUrl}${sourcesUrl.startsWith("/") ? "" : "/"}${sourcesUrl}`;
+        const manifestFullUrl = sourcesUrl.startsWith("http")
+          ? sourcesUrl
+          : `${this.baseUrl}${sourcesUrl.startsWith("/") ? "" : "/"}${sourcesUrl}`;
         const sRes = await this.request(manifestFullUrl, {
           method: "POST",
           headers: {
             Accept: "application/json",
             "X-CSRF-TOKEN": csrfToken,
             Referer: fullUrl,
+            Origin: this.baseUrl,
             "X-Requested-With": "XMLHttpRequest",
+            "Content-Type": "application/json",
           },
+          body: JSON.stringify({}),
         });
 
         let manifest = null;
-        if (typeof sRes === "object" && sRes !== null && sRes.players) {
+        if (typeof sRes === "object" && sRes !== null && (sRes.players || sRes.downloads)) {
           manifest = sRes;
         } else if (typeof sRes === "string") {
           try {
@@ -319,6 +333,7 @@ export default class extends Extension {
           } catch (_) {}
         }
 
+        // 1. Streaming Players Manifest
         if (manifest && manifest.players) {
           const players = manifest.players;
           for (const [qualKey, serverList] of Object.entries(players)) {
@@ -326,7 +341,7 @@ export default class extends Extension {
             for (const srv of serverList) {
               const token = srv.token;
               const label = srv.label || `Server (${qualKey})`;
-              const embedUrl = `https://witanime.site/watch/stream-gate/${token}`;
+              const embedUrl = `${this.baseUrl}/watch/stream-gate/${token}`;
 
               if (label.toLowerCase().includes("videa") && !label.toLowerCase().includes("videas")) {
                 const viStreams = await this._extractVidea(embedUrl);
@@ -340,21 +355,41 @@ export default class extends Extension {
                   url: embedUrl,
                   type: "hls",
                   quality: this._normalizeQuality(qualKey),
-                  headers: { Referer: "https://witanime.site/" },
+                  headers: { Referer: `${this.baseUrl}/` },
                 });
               }
+            }
+          }
+        }
+
+        // 2. Download Mirrors Manifest
+        if (manifest && manifest.downloads) {
+          const downloads = manifest.downloads;
+          for (const [qualKey, dlList] of Object.entries(downloads)) {
+            if (!Array.isArray(dlList)) continue;
+            for (const dl of dlList) {
+              const token = dl.token;
+              const label = dl.label || `Download (${qualKey})`;
+              const downloadGateUrl = `${this.baseUrl}/watch/download-gate/${token}`;
+              addSource({
+                server: `${label} (${qualKey})`,
+                url: downloadGateUrl,
+                type: "mp4",
+                quality: this._normalizeQuality(qualKey),
+                headers: { Referer: `${this.baseUrl}/` },
+              });
             }
           }
         }
       } catch (_) {}
     }
 
-    // Fallback: check DOM iframes
+    // Fallback A: check DOM iframes
     const iframeRegex = /<iframe[^>]*src=['"]([^'"]+)['"][^>]*>/gi;
     let ifMatch;
     while ((ifMatch = iframeRegex.exec(html)) !== null) {
       const src = ifMatch[1];
-      if (src.includes("google") || src.includes("analytics")) continue;
+      if (src.includes("google") || src.includes("analytics") || src.includes("cloudflare")) continue;
 
       if (src.includes("videa.hu")) {
         const viStreams = await this._extractVidea(src);
@@ -368,9 +403,51 @@ export default class extends Extension {
           url: src,
           type: src.includes(".m3u8") ? "hls" : "mp4",
           quality: "Auto",
-          headers: { Referer: "https://witanime.site/" },
+          headers: { Referer: `${this.baseUrl}/` },
         });
       }
+    }
+
+    // Fallback B: scan for any direct gates, tokens, or external media links in HTML
+    const gateRegex = /href=['"]([^'"]*\/watch\/(?:stream|download)-gate\/[a-f0-9]{64})['"]/gi;
+    let gMatch;
+    while ((gMatch = gateRegex.exec(html)) !== null) {
+      const gUrl = gMatch[1].startsWith("http") ? gMatch[1] : `${this.baseUrl}${gMatch[1]}`;
+      const isDl = gUrl.includes("download-gate");
+      addSource({
+        server: isDl ? "Download Gate" : "Stream Gate",
+        url: gUrl,
+        type: isDl ? "mp4" : "hls",
+        quality: "HD",
+        headers: { Referer: `${this.baseUrl}/` },
+      });
+    }
+
+    // Fallback C: check for external provider embeds (e.g. 4shared, mega, pixeldrain)
+    const extRegex = /href=['"](https?:\/\/(?:pixeldrain\.com\/u\/|mp4upload\.com\/|mega\.nz\/|4shared\.com\/)[^'"]+)['"]/gi;
+    let extMatch;
+    while ((extMatch = extRegex.exec(html)) !== null) {
+      const extUrl = extMatch[1];
+      if (extUrl.includes("pixeldrain.com/u/")) {
+        const pdId = extUrl.match(/pixeldrain\.com\/u\/([a-zA-Z0-9_-]+)/i);
+        if (pdId) {
+          addSource({
+            server: "Pixeldrain Direct",
+            url: `https://pixeldrain.com/api/file/${pdId[1]}`,
+            type: "mp4",
+            quality: "HD",
+            headers: { Referer: "https://pixeldrain.com/" },
+          });
+          continue;
+        }
+      }
+      addSource({
+        server: "External Mirror",
+        url: extUrl,
+        type: "mp4",
+        quality: "Auto",
+        headers: { Referer: fullUrl },
+      });
     }
 
     return {
