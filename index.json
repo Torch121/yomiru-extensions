@@ -225,6 +225,21 @@
     "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/mangatime.js"
   },
   {
+    "package": "cx.miruro",
+    "name": "Miruro",
+    "version": "v1.0.0",
+    "author": "Yomiru",
+    "lang": "en",
+    "license": "MIT",
+    "type": "bangumi",
+    "webSite": "https://www.miruro.cx",
+    "nsfw": false,
+    "icon": "https://www.miruro.cx/favicon.ico",
+    "description": "Stream high-quality anime with multi-track SUB, DUB, and Soft-SUB streams, multi-CDN HLS playback, multilingual subtitles, and intro/outro skip times from Miruro.",
+    "filename": "miruro.js",
+    "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/miruro.js"
+  },
+  {
     "package": "to.mkissa.manga",
     "name": "Mkissa (Manga)",
     "version": "v1.0.0",
