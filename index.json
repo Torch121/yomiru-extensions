@@ -1,5 +1,20 @@
 [
   {
+    "package": "to.anikototv",
+    "name": "Anikoto",
+    "version": "v1.0.0",
+    "author": "Yomiru",
+    "lang": "en",
+    "license": "MIT",
+    "type": "bangumi",
+    "webSite": "https://anikototv.to",
+    "nsfw": false,
+    "icon": "https://anikototv.to/AnikotoTheme/assets/images/favicon.png",
+    "description": "Stream high-quality subbed and dubbed anime with multi-resolution M3U8 playback, direct subtitles, and fast servers from Anikoto.",
+    "filename": "anikoto.js",
+    "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/anikoto.js"
+  },
+  {
     "package": "site.anime4up",
     "name": "Anime4up",
     "version": "v1.0.1",
