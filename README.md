@@ -2,7 +2,7 @@
 
 Official remote extension catalog for [Yomiru](https://github.com/Torch121/Yomiru).
 
-> **Last Synced**: 2026-10-27 19:35 UTC  
+> **Last Synced**: 2026-10-27 20:06 UTC  
 > **Repository**: `Torch121/yomiru-extensions` (branch: `main`)  
 > **Manifest URL**: `https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/index.json`
 
@@ -27,8 +27,10 @@ Official remote extension catalog for [Yomiru](https://github.com/Torch121/Yomir
 | <img src="https://mangakatana.com/static/img/fav.png" width="28" height="28" /> | **Mangakatana** | `mangakatana.com` | `v0.0.2` | `manga` | EN | shashankx86 | [mangakatana.js](./extensions/mangakatana.js) |
 | <img src="https://mangapill.com/static/favicon/apple-touch-icon.png" width="28" height="28" /> | **MangaPill** | `com.mangapill` | `v1.0.0` | `manga` | EN | Yomiru | [mangapill.js](./extensions/mangapill.js) |
 | <img src="https://mangatime.org/brand/v2/icons/icon-192.png" width="28" height="28" /> | **MangaTime** | `mangatime.org` | `v1.0.2` | `manga` | AR | Yomiru | [mangatime.js](./extensions/mangatime.js) |
+| <img src="https://www.mangzio.com/brand/apple-touch-icon.png" width="28" height="28" /> | **Mangzio** | `com.mangzio` | `v1.0.0` | `manga` | EN | Yomiru | [mangzio.js](./extensions/mangzio.js) |
 | <img src="https://www.miruro.cx/favicon.ico" width="28" height="28" /> | **Miruro** | `cx.miruro` | `v1.0.0` | `bangumi` | EN | Yomiru | [miruro.js](./extensions/miruro.js) |
 | <img src="https://mkissa.to/favicon.ico" width="28" height="28" /> | **Mkissa (Manga)** | `to.mkissa.manga` | `v1.0.0` | `manga` | ALL | Yomiru | [mkissa-manga.js](./extensions/mkissa-manga.js) |
+| <img src="https://www.moarmanga.com/wp-content/uploads/mangagenz_avatar-150x150.jpg" width="28" height="28" /> | **MoarManga** | `com.moarmanga` | `v1.0.0` | `manga` | EN | Yomiru | [moarmanga.js](./extensions/moarmanga.js) |
 | <img src="https://nekobt.to/cdn/pfp/null/64" width="28" height="28" /> | **NekoBT** | `to.nekobt` | `v1.0.0` | `bangumi` | ALL | Yomiru | [nekobt.js](./extensions/nekobt.js) |
 | <img src="https://nyaa.si/static/favicon.png" width="28" height="28" /> | **Nyaa** | `si.nyaa` | `v1.0.2` | `bangumi` | ALL | Yomiru | [nyaa.js](./extensions/nyaa.js) |
 | <img src="https://senshi.to/favicon.ico" width="28" height="28" /> | **Senshi** | `to.senshi` | `v1.0.1` | `bangumi` | EN | Yomiru | [senshi.js](./extensions/senshi.js) |

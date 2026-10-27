@@ -255,6 +255,21 @@
     "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/mangatime.js"
   },
   {
+    "package": "com.mangzio",
+    "name": "Mangzio",
+    "version": "v1.0.0",
+    "author": "Yomiru",
+    "lang": "en",
+    "license": "MIT",
+    "type": "manga",
+    "webSite": "https://www.mangzio.com/en",
+    "nsfw": false,
+    "icon": "https://www.mangzio.com/brand/apple-touch-icon.png",
+    "description": "Read high-quality popular and trending manga and manhwa online with fast reader chapters from Mangzio.",
+    "filename": "mangzio.js",
+    "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/mangzio.js"
+  },
+  {
     "package": "cx.miruro",
     "name": "Miruro",
     "version": "v1.0.0",
@@ -283,6 +298,21 @@
     "description": "Mkissa manga reader provider with reverse-engineered client crypto decryption and high-resolution CDN images.",
     "filename": "mkissa-manga.js",
     "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/mkissa-manga.js"
+  },
+  {
+    "package": "com.moarmanga",
+    "name": "MoarManga",
+    "version": "v1.0.0",
+    "author": "Yomiru",
+    "lang": "en",
+    "license": "MIT",
+    "type": "manga",
+    "webSite": "https://www.moarmanga.com/en/",
+    "nsfw": false,
+    "icon": "https://www.moarmanga.com/wp-content/uploads/mangagenz_avatar-150x150.jpg",
+    "description": "Read free high-quality manga, manhwa, and webcomics online in English from MoarManga.",
+    "filename": "moarmanga.js",
+    "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/moarmanga.js"
   },
   {
     "package": "to.nekobt",
