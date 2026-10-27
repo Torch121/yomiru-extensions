@@ -32,18 +32,19 @@ export default class extends Extension {
       ...options,
       encoding: "base64",
       headers: {
-        "Accept": "*/*",
+        "Accept": "application/octet-stream, */*",
         "Accept-Language": "en-US,en;q=0.9",
         "Priority": "u=1, i",
         "Referer": `${base}/`,
-        "sec-ch-ua": '"Not(A:Brand";v="99", "Google Chrome";v="133", "Chromium";v="133"',
+        "Origin": base,
+        "sec-ch-ua": '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
         "sec-ch-ua-mobile": "?0",
         "sec-ch-ua-platform": '"Linux"',
         "sec-fetch-dest": "empty",
         "sec-fetch-mode": "cors",
         "sec-fetch-site": "same-origin",
         "User-Agent":
-          "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36",
+          "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
         ...(options.headers || {}),
       },
     });
@@ -56,30 +57,43 @@ export default class extends Extension {
       b64 = b64OrBuffer.toString("base64");
     }
 
-    const rawBinary = atob(b64);
-    const key = "miruro/catalog";
-    let xorBinary = "";
-    for (let i = 0; i < rawBinary.length; i++) {
-      xorBinary += String.fromCharCode(rawBinary.charCodeAt(i) ^ key.charCodeAt(i % key.length));
-    }
-    const xorB64 = btoa(xorBinary);
+    if (!b64 || b64.length < 8) return null;
 
-    // 1. Native Yomiru bridge decompressor
-    if (typeof this.decompressGzip === "function") {
-      try {
-        const jsonStr = await this.decompressGzip(xorB64);
-        if (jsonStr) return JSON.parse(jsonStr);
-      } catch (_) {}
+    // Detect raw HTML error pages (e.g. Cloudflare 403) before XOR
+    if (b64.startsWith("PCFkb2N0") || b64.startsWith("PGh0bWw") || b64.startsWith("PD94bWw")) {
+      return null;
     }
 
-    // 2. Node.js environment fallback
-    if (typeof require !== "undefined") {
-      try {
-        const zlib = require("zlib");
-        const buf = Buffer.from(xorB64, "base64");
-        return JSON.parse(zlib.gunzipSync(buf).toString("utf-8"));
-      } catch (_) {}
-    }
+    try {
+      const rawBinary = atob(b64);
+      if (rawBinary.startsWith("<!") || rawBinary.startsWith("<html")) {
+        return null;
+      }
+
+      const key = "miruro/catalog";
+      let xorBinary = "";
+      for (let i = 0; i < rawBinary.length; i++) {
+        xorBinary += String.fromCharCode(rawBinary.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+      }
+      const xorB64 = btoa(xorBinary);
+
+      // 1. Native Yomiru bridge decompressor
+      if (typeof this.decompressGzip === "function") {
+        try {
+          const jsonStr = await this.decompressGzip(xorB64);
+          if (jsonStr) return JSON.parse(jsonStr);
+        } catch (_) {}
+      }
+
+      // 2. Node.js environment fallback
+      if (typeof require !== "undefined") {
+        try {
+          const zlib = require("zlib");
+          const buf = Buffer.from(xorB64, "base64");
+          return JSON.parse(zlib.gunzipSync(buf).toString("utf-8"));
+        } catch (_) {}
+      }
+    } catch (_) {}
 
     return null;
   }
@@ -270,28 +284,46 @@ export default class extends Extension {
     let desc = "";
     let slug = "anime";
 
-    // 1. Fetch metadata from watch page SSR
+    // 1. Fetch metadata directly from /api/v1/anime/{id} or watch page SSR
     try {
-      const pageRes = await this.req(`/watch/${animeId}`, {
-        encoding: "utf-8",
-        headers: { Accept: "text/html" },
-      });
-      const html = typeof pageRes === "string" ? pageRes : (pageRes && pageRes.body) || "";
-      if (html.includes("__SSR_DATA__")) {
-        const rawB64 = html.split("__SSR_DATA__")[1].split('"')[1];
-        const ssrData = await this._decryptPayload(rawB64);
-        if (ssrData) {
-          const titleObj = ssrData.title || {};
-          title = titleObj.english || titleObj.romaji || titleObj.native || title;
-          cover = ssrData.cover_url || ssrData.banner_url || cover;
-          desc = ssrData.description || desc;
-          slug = (titleObj.romaji || titleObj.english || "anime")
-            .toLowerCase()
-            .replace(/[^a-z0-9]+/g, "-")
-            .replace(/^-+|-+$/g, "");
-        }
+      const detailRes = await this.req(`/api/v1/anime/${animeId}`);
+      const detailData = await this._decryptPayload(detailRes);
+      if (detailData && detailData.id) {
+        const titleObj = detailData.title || {};
+        title = titleObj.english || titleObj.romaji || titleObj.native || title;
+        cover = detailData.cover_url || detailData.banner_url || cover;
+        desc = detailData.description || desc;
+        slug = (titleObj.romaji || titleObj.english || "anime")
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-+|-+$/g, "");
       }
     } catch (_) {}
+
+    // Fallback to SSR if direct API detail was empty
+    if (title === "Unknown Anime") {
+      try {
+        const pageRes = await this.req(`/watch/${animeId}`, {
+          encoding: "utf-8",
+          headers: { Accept: "text/html" },
+        });
+        const html = typeof pageRes === "string" ? pageRes : (pageRes && pageRes.body) || "";
+        if (html.includes("__SSR_DATA__")) {
+          const rawB64 = html.split("__SSR_DATA__")[1].split('"')[1];
+          const ssrData = await this._decryptPayload(rawB64);
+          if (ssrData) {
+            const titleObj = ssrData.title || {};
+            title = titleObj.english || titleObj.romaji || titleObj.native || title;
+            cover = ssrData.cover_url || ssrData.banner_url || cover;
+            desc = ssrData.description || desc;
+            slug = (titleObj.romaji || titleObj.english || "anime")
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, "-")
+              .replace(/^-+|-+$/g, "");
+          }
+        }
+      } catch (_) {}
+    }
 
     // 2. Fetch complete episode list
     const epRes = await this.req(`/api/v1/anime/${animeId}/episodes?limit=10000`, {
@@ -391,10 +423,11 @@ export default class extends Extension {
     if (!preferredTrack) preferredTrack = "sub";
 
     const preferredProvider = (await this.getSetting("preferred_provider")) || "icarus";
+    const baseUrl = await this.getBaseUrl();
 
     const playRes = await this.req(`/api/v1/anime/${animeId}/episodes/${epNum}/play`, {
       headers: {
-        Referer: `${await this.getBaseUrl()}/watch/${animeId}?ep=${epNum}`,
+        Referer: `${baseUrl}/watch/${animeId}?ep=${epNum}`,
       },
     });
 
@@ -428,26 +461,51 @@ export default class extends Extension {
       "Origin": "https://ultracloud.cc",
       "Referer": "https://ultracloud.cc/",
       "User-Agent":
-        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
     };
     const subtitles = [];
+    const allPlayableSources = [];
+    let introTimes = null;
+    let outroTimes = null;
 
     for (const prov of sortedProviders) {
+      const provName = prov.provider || "server";
       const provSubs = Array.isArray(prov.subtitles) ? prov.subtitles : [];
       const servers = Array.isArray(prov.servers) ? prov.servers : [];
+
+      if (!introTimes && prov.intro && typeof prov.intro.start === "number") {
+        introTimes = { start: Math.round(prov.intro.start), end: Math.round(prov.intro.end || 0) };
+      }
+      if (!outroTimes && prov.outro && typeof prov.outro.start === "number") {
+        outroTimes = { start: Math.round(prov.outro.start), end: Math.round(prov.outro.end || 0) };
+      }
 
       for (const srv of servers) {
         const srvHeaders = srv.headers || {};
         const streams = Array.isArray(srv.streams) ? srv.streams : [];
+        const srvName = srv.server || provName;
 
         for (const strm of streams) {
           if (!strm || !strm.url) continue;
 
+          const effectiveHeaders = {
+            ...streamHeaders,
+            ...(srvHeaders.Origin ? { "Origin": srvHeaders.Origin } : {}),
+            ...(srvHeaders.Referer ? { "Referer": srvHeaders.Referer } : {}),
+          };
+
           if (!primaryStreamUrl) {
             primaryStreamUrl = strm.url;
-            if (srvHeaders.Origin) streamHeaders["Origin"] = srvHeaders.Origin;
-            if (srvHeaders.Referer) streamHeaders["Referer"] = srvHeaders.Referer;
+            streamHeaders = effectiveHeaders;
           }
+
+          allPlayableSources.push({
+            title: `${provName.toUpperCase()} (${srvName})`,
+            quality: strm.quality || "auto",
+            url: strm.url,
+            isHls: strm.format === "hls" || strm.url.includes(".m3u8"),
+            headers: effectiveHeaders,
+          });
 
           const rawSubs = [...provSubs, ...(Array.isArray(strm.subtitles) ? strm.subtitles : [])];
           for (const sub of rawSubs) {
@@ -471,14 +529,31 @@ export default class extends Extension {
       }
     }
 
+    // Add official website webEmbed player as fallback
+    const websiteWatchUrl = `${baseUrl}/watch/${animeId}?ep=${epNum}`;
+    allPlayableSources.push({
+      title: "Miruro Web Player (Official Website)",
+      quality: "Auto (Web)",
+      url: websiteWatchUrl,
+      isHls: false,
+      isEmbed: true,
+      requiresBrowser: true,
+      headers: {
+        "Referer": `${baseUrl}/`,
+      },
+    });
+
     if (!primaryStreamUrl) {
-      throw new Error("No playable HLS streaming URL found for this episode.");
+      primaryStreamUrl = websiteWatchUrl;
     }
 
     return {
       url: primaryStreamUrl,
       headers: streamHeaders,
       subtitles: subtitles,
+      sources: allPlayableSources,
+      intro: introTimes,
+      outro: outroTimes,
     };
   }
 }

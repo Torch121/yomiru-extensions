@@ -210,6 +210,21 @@
     "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/mangakatana.js"
   },
   {
+    "package": "com.mangapill",
+    "name": "MangaPill",
+    "version": "v1.0.0",
+    "author": "Yomiru",
+    "lang": "en",
+    "license": "MIT",
+    "type": "manga",
+    "webSite": "https://mangapill.com/",
+    "nsfw": false,
+    "icon": "https://mangapill.com/static/favicon/apple-touch-icon.png",
+    "description": "Read free high-quality manga online in English with fast updates and clean reader pages from MangaPill.",
+    "filename": "mangapill.js",
+    "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/mangapill.js"
+  },
+  {
     "package": "mangatime.org",
     "name": "MangaTime",
     "version": "v1.0.2",
@@ -313,20 +328,5 @@
     "description": "Anime torrent indexer providing high-speed BitTorrent and Magnet streams from TsukiHime (tsukihime.org).",
     "filename": "tsukihime.js",
     "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/tsukihime.js"
-  },
-  {
-    "package": "site.witanime",
-    "name": "WitAnime",
-    "version": "v1.0.5",
-    "author": "Yomiru",
-    "lang": "ar",
-    "license": "MIT",
-    "type": "bangumi",
-    "webSite": "https://witanime.site",
-    "nsfw": false,
-    "icon": "https://witanime.site/favicon.ico",
-    "description": "مشاهدة وتحميل مسلسلات وأفلام الأنمي المترجمة أون لاين بجودات متعددة عبر WitAnime",
-    "filename": "witanime.js",
-    "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/witanime.js"
   }
 ]
