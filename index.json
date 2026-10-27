@@ -135,6 +135,21 @@
     "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/kagane.js"
   },
   {
+    "package": "net.komikkita",
+    "name": "KomikKita",
+    "version": "v1.0.0",
+    "author": "Yomiru",
+    "lang": "id",
+    "license": "MIT",
+    "type": "manga",
+    "webSite": "https://komikkita.net/",
+    "nsfw": false,
+    "icon": "https://i2.wp.com/komikkita.net/wp-content/uploads/2026/02/cropped-komikkita-icon-small-192x192.png",
+    "description": "Baca komik manga, manhwa, dan manhua bahasa Indonesia terlengkap dan terupdate di KomikKita.",
+    "filename": "komikkita.js",
+    "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/komikkita.js"
+  },
+  {
     "package": "ink.likemanga",
     "name": "LikeManga",
     "version": "v1.0.1",

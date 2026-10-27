@@ -2,7 +2,7 @@
 
 Official remote extension catalog for [Yomiru](https://github.com/Torch121/Yomiru).
 
-> **Last Synced**: 2026-10-27 19:13 UTC  
+> **Last Synced**: 2026-10-27 19:35 UTC  
 > **Repository**: `Torch121/yomiru-extensions` (branch: `main`)  
 > **Manifest URL**: `https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/index.json`
 
@@ -19,6 +19,7 @@ Official remote extension catalog for [Yomiru](https://github.com/Torch121/Yomir
 | <img src="https://anv.to/favicon.ico" width="28" height="28" /> | **Anv** | `to.anv` | `v1.0.1` | `bangumi` | EN | Yomiru | [anv.js](./extensions/anv.js) |
 | <img src="https://hianime.at/theme/images/icons-192.png" width="28" height="28" /> | **HiAnime** | `hianime.at` | `v0.2.0` | `bangumi` | EN | Yomiru | [hianime.js](./extensions/hianime.js) |
 | <img src="https://kagane.si/favicon.ico" width="28" height="28" /> | **Kagane** | `si.kagane` | `v1.0.1` | `manga` | ALL | Yomiru | [kagane.js](./extensions/kagane.js) |
+| <img src="https://i2.wp.com/komikkita.net/wp-content/uploads/2026/02/cropped-komikkita-icon-small-192x192.png" width="28" height="28" /> | **KomikKita** | `net.komikkita` | `v1.0.0` | `manga` | ID | Yomiru | [komikkita.js](./extensions/komikkita.js) |
 | <img src="https://likemanga.ink/upload/logos/2024/09/fav_1727153781_66f24675e291d.png" width="28" height="28" /> | **LikeManga** | `ink.likemanga` | `v1.0.1` | `manga` | ALL | Yomiru | [likemanga.js](./extensions/likemanga.js) |
 | <img src="https://mangaball.com/images/favicon.png" width="28" height="28" /> | **MangaBall** | `mangaball.com` | `v0.0.3` | `manga` | ALL | Yomiru | [mangaball.js](./extensions/mangaball.js) |
 | <img src="https://mangadar.com/wp-content/uploads/2026/07/favicon-300x300.png" width="28" height="28" /> | **MangaDar** | `mangadar.com` | `v1.0.0` | `manga` | AR | Yomiru | [mangadar.js](./extensions/mangadar.js) |
