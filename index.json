@@ -75,6 +75,21 @@
     "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/anipm.js"
   },
   {
+    "package": "to.anisnatch",
+    "name": "AniSnatch",
+    "version": "v1.0.0",
+    "author": "Yomiru",
+    "lang": "all",
+    "license": "MIT",
+    "type": "bangumi",
+    "webSite": "https://anisnatch.to",
+    "nsfw": false,
+    "icon": "https://anisnatch.to/favicon.ico",
+    "description": "Watch anime online in HD with multi-server SUB, DUB, and soft subtitles, multi-resolution M3U8 playback, and skip intro/outro times from AniSnatch.",
+    "filename": "anisnatch.js",
+    "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/anisnatch.js"
+  },
+  {
     "package": "ru.aniwaves",
     "name": "AniWaves",
     "version": "v1.0.0",

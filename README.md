@@ -2,7 +2,7 @@
 
 Official remote extension catalog for [Yomiru](https://github.com/Torch121/Yomiru).
 
-> **Last Synced**: 2026-10-27 20:06 UTC  
+> **Last Synced**: 2026-10-29 19:58 UTC  
 > **Repository**: `Torch121/yomiru-extensions` (branch: `main`)  
 > **Manifest URL**: `https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/index.json`
 
@@ -15,6 +15,7 @@ Official remote extension catalog for [Yomiru](https://github.com/Torch121/Yomir
 | <img src="https://www.animegg.org/images/anime.png" width="28" height="28" /> | **AnimeGG** | `animegg.org` | `v0.1.0` | `bangumi` | EN | Yomiru | [animegg.js](./extensions/animegg.js) |
 | <img src="https://www.animeonsen.xyz/assets/icons/icon-192x192.png" width="28" height="28" /> | **AnimeOnsen** | `xyz.animeonsen` | `v1.0.0` | `bangumi` | ALL | Yomiru | [animeonsen.js](./extensions/animeonsen.js) |
 | <img src="https://ani.pm/icon.png" width="28" height="28" /> | **Ani.pm** | `pm.ani` | `v1.0.0` | `bangumi` | ALL | Yomiru | [anipm.js](./extensions/anipm.js) |
+| <img src="https://anisnatch.to/favicon.ico" width="28" height="28" /> | **AniSnatch** | `to.anisnatch` | `v1.0.0` | `bangumi` | ALL | Yomiru | [anisnatch.js](./extensions/anisnatch.js) |
 | <img src="https://aniwaves.ru/assets/images/favicons/favicon-96x96.png" width="28" height="28" /> | **AniWaves** | `ru.aniwaves` | `v1.0.0` | `bangumi` | ALL | Yomiru | [aniwaves.js](./extensions/aniwaves.js) |
 | <img src="https://anv.to/favicon.ico" width="28" height="28" /> | **Anv** | `to.anv` | `v1.0.1` | `bangumi` | EN | Yomiru | [anv.js](./extensions/anv.js) |
 | <img src="https://hianime.at/theme/images/icons-192.png" width="28" height="28" /> | **HiAnime** | `hianime.at` | `v0.2.0` | `bangumi` | EN | Yomiru | [hianime.js](./extensions/hianime.js) |
