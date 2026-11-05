@@ -1,6 +1,6 @@
 // ==YomiruExtension==
 // @name         WitAnime
-// @version      v1.1.3
+// @version      v1.1.4
 // @author       Yomiru
 // @lang         ar
 // @license      MIT
@@ -1106,12 +1106,38 @@ export default class extends Extension {
         selected = allStreams[allStreams.length - 1];
       }
 
+      let finalUrl = selected.url;
+      try {
+        const redirRes = await this.request(selected.url, {
+          method: "GET",
+          followRedirects: false,
+          fullResponse: true,
+          headers: {
+            Referer: embedUrl || "https://videa.hu/",
+            "User-Agent": DEFAULT_USER_AGENT,
+          },
+        });
+        let rObj = redirRes;
+        if (typeof rObj === "string") {
+          try {
+            rObj = JSON.parse(rObj);
+          } catch (_) {}
+        }
+        if (rObj && typeof rObj === "object") {
+          const hdrs = rObj.headers || {};
+          const loc = hdrs.location || hdrs.Location || "";
+          if (loc) {
+            finalUrl = loc.indexOf("http") === 0 ? loc : "https://videa.hu" + loc;
+          }
+        }
+      } catch (_) {}
+
       return {
-        url: selected.url,
+        url: finalUrl,
         type: "mp4",
         isDirectVideo: true,
         headers: {
-          Referer: "https://videa.hu/",
+          Referer: embedUrl || "https://videa.hu/",
           "User-Agent":
             DEFAULT_USER_AGENT,
         },
@@ -2091,6 +2117,11 @@ export default class extends Extension {
         ? manifest.players
         : {};
 
+    const downloads =
+      manifest && typeof manifest === "object" && manifest.downloads
+        ? manifest.downloads
+        : {};
+
     const availablePlayerQualities = Object.keys(players);
     console.log("[WitAnime] Manifest received. Available player qualities: " + availablePlayerQualities.join(", "));
 
@@ -2117,10 +2148,10 @@ export default class extends Extension {
 
     const getServerPriority = (label) => {
       const l = (label || "").toLowerCase();
-      if (l.indexOf("yonaplay") !== -1 || l.indexOf("dotplay") !== -1) return 1;
+      if (l.indexOf("mp4upload") !== -1) return 1;
       if (l.indexOf("videa") !== -1 && l.indexOf("videas") === -1) return 2;
-      if (l.indexOf("yourupload") !== -1) return 3;
-      if (l.indexOf("mp4upload") !== -1) return 4;
+      if (l.indexOf("yonaplay") !== -1 || l.indexOf("dotplay") !== -1) return 3;
+      if (l.indexOf("yourupload") !== -1) return 4;
       if (l.indexOf("mail") !== -1) return 5;
       if (l.indexOf("ok") !== -1 || l.indexOf("odnoklassniki") !== -1) return 6;
       if (l.indexOf("videas") !== -1) return 7;
@@ -2140,7 +2171,7 @@ export default class extends Extension {
       const qualityOffset = q === "FHD" ? 0 : q === "HD" ? 100 : 200;
       const seenLabelsInQuality = {};
 
-      // Collect playable servers from players[q] (players are direct video stream embeds)
+      // 1. Collect playable servers from players[q] (players are direct video stream embeds)
       const serverList = players[q] || [];
       const qualityCandidates = [];
       if (Array.isArray(serverList)) {
@@ -2158,6 +2189,28 @@ export default class extends Extension {
               label: rawLabel,
               token: s.token,
               isDownload: false,
+              priority: getServerPriority(rawLabel),
+              rank: getServerPriority(rawLabel) + qualityOffset,
+            });
+          }
+        }
+      }
+
+      // 2. Also inspect downloads[q] for direct MP4 hosts (e.g. mp4upload)
+      const downloadsList = downloads[q] || [];
+      if (Array.isArray(downloadsList)) {
+        for (let di = 0; di < downloadsList.length; di++) {
+          const d = downloadsList[di];
+          if (!d || !d.token) continue;
+          const rawLabel = (d.label || "Download").toString().trim();
+          const normLabel = rawLabel.toLowerCase();
+          if (normLabel.indexOf("mp4upload") !== -1 && !seenLabelsInQuality[normLabel]) {
+            seenLabelsInQuality[normLabel] = true;
+            qualityCandidates.push({
+              quality: q,
+              label: rawLabel,
+              token: d.token,
+              isDownload: true,
               priority: getServerPriority(rawLabel),
               rank: getServerPriority(rawLabel) + qualityOffset,
             });
@@ -2191,13 +2244,13 @@ export default class extends Extension {
     for (let ci = 0; ci < candidates.length; ci++) {
       const item = candidates[ci];
 
-      // Stop once we have 2 working streams across all qualities
-      if (sources.length >= 2) {
+      // Stop once we have 4 working streams across qualities
+      if (sources.length >= 4) {
         break;
       }
 
-      // If this quality already has 1 working source, skip redundant servers of the same quality
-      if ((qualityCounts[item.quality] || 0) >= 1) {
+      // Allow up to 2 working sources per quality to preserve direct MP4 alongside HLS
+      if ((qualityCounts[item.quality] || 0) >= 2) {
         continue;
       }
 
@@ -2395,9 +2448,11 @@ export default class extends Extension {
     }
 
     sources.sort((a, b) => {
-      const aHls = a.type === "hls" || (a.url && a.url.indexOf(".m3u8") !== -1) ? 1 : 0;
-      const bHls = b.type === "hls" || (b.url && b.url.indexOf(".m3u8") !== -1) ? 1 : 0;
-      return bHls - aHls;
+      const qOrder = { FHD: 0, HD: 1, SD: 2 };
+      const qA = qOrder[(a.quality || "").toUpperCase()] ?? 10;
+      const qB = qOrder[(b.quality || "").toUpperCase()] ?? 10;
+      if (qA !== qB) return qA - qB;
+      return 0;
     });
 
     console.log("[WitAnime] watch() completed. Returning " + sources.length + " playable stream source(s).");
