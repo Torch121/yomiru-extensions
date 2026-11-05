@@ -1,6 +1,6 @@
 // ==YomiruExtension==
 // @name         WitAnime
-// @version      v1.1.2
+// @version      v1.1.3
 // @author       Yomiru
 // @lang         ar
 // @license      MIT
@@ -2097,58 +2097,50 @@ export default class extends Extension {
     const isPlayableServer = (label) => {
       const l = (label || "").toLowerCase();
       return (
-        l.indexOf("videa") !== -1 ||
-        l.indexOf("videas") !== -1 ||
-        l.indexOf("mp4upload") !== -1 ||
-        l.indexOf("google") !== -1 ||
-        l.indexOf("gdrive") !== -1 ||
-        l.indexOf("drive") !== -1 ||
-        l.indexOf("ok") !== -1 ||
-        l.indexOf("odnoklassniki") !== -1 ||
         l.indexOf("yonaplay") !== -1 ||
         l.indexOf("dotplay") !== -1 ||
+        l.indexOf("videa") !== -1 ||
+        l.indexOf("videas") !== -1 ||
+        l.indexOf("yourupload") !== -1 ||
+        l.indexOf("mp4upload") !== -1 ||
+        l.indexOf("mail") !== -1 ||
+        l.indexOf("ok") !== -1 ||
+        l.indexOf("odnoklassniki") !== -1 ||
         l.indexOf("soraplay") !== -1 ||
         l.indexOf("4shared") !== -1 ||
-        l.indexOf("mail") !== -1 ||
-        l.indexOf("hgcloud") !== -1 ||
-        l.indexOf("yourupload") !== -1 ||
         l.indexOf("streamwish") !== -1 ||
         l.indexOf("awish") !== -1 ||
-        l.indexOf("filemoon") !== -1
+        l.indexOf("filemoon") !== -1 ||
+        l.indexOf("hgcloud") !== -1
       );
     };
 
     const getServerPriority = (label) => {
       const l = (label || "").toLowerCase();
       if (l.indexOf("yonaplay") !== -1 || l.indexOf("dotplay") !== -1) return 1;
-      if (l.indexOf("yourupload") !== -1) return 2;
-      if (l.indexOf("mp4upload") !== -1) return 3;
-      if (l.indexOf("mail") !== -1) return 4;
-      if (l.indexOf("ok") !== -1 || l.indexOf("odnoklassniki") !== -1) return 5;
-      if (l.indexOf("videas") !== -1) return 6;
-      if (l.indexOf("videa") !== -1) return 7;
-      if (l.indexOf("google") !== -1 || l.indexOf("gdrive") !== -1 || l.indexOf("drive") !== -1) return 8;
-      if (l.indexOf("soraplay") !== -1) return 9;
-      if (l.indexOf("4shared") !== -1) return 10;
-      if (l.indexOf("streamwish") !== -1 || l.indexOf("awish") !== -1) return 11;
-      if (l.indexOf("filemoon") !== -1) return 12;
-      if (l.indexOf("hgcloud") !== -1) return 13;
+      if (l.indexOf("videa") !== -1 && l.indexOf("videas") === -1) return 2;
+      if (l.indexOf("yourupload") !== -1) return 3;
+      if (l.indexOf("mp4upload") !== -1) return 4;
+      if (l.indexOf("mail") !== -1) return 5;
+      if (l.indexOf("ok") !== -1 || l.indexOf("odnoklassniki") !== -1) return 6;
+      if (l.indexOf("videas") !== -1) return 7;
+      if (l.indexOf("soraplay") !== -1) return 8;
+      if (l.indexOf("4shared") !== -1) return 9;
+      if (l.indexOf("streamwish") !== -1 || l.indexOf("awish") !== -1) return 10;
+      if (l.indexOf("filemoon") !== -1) return 11;
+      if (l.indexOf("hgcloud") !== -1) return 12;
       return 20;
     };
 
     const candidates = [];
     const qualitiesToInspect = ["FHD", "HD", "SD"];
-    const downloads =
-      manifest && typeof manifest === "object" && manifest.downloads
-        ? manifest.downloads
-        : {};
 
     for (let qi = 0; qi < qualitiesToInspect.length; qi++) {
       const q = qualitiesToInspect[qi];
       const qualityOffset = q === "FHD" ? 0 : q === "HD" ? 100 : 200;
       const seenLabelsInQuality = {};
 
-      // 1. Collect playable servers from players[q]
+      // Collect playable servers from players[q] (players are direct video stream embeds)
       const serverList = players[q] || [];
       const qualityCandidates = [];
       if (Array.isArray(serverList)) {
@@ -2173,34 +2165,10 @@ export default class extends Extension {
         }
       }
 
-      // 2. Also inspect downloads[q] for missing direct servers (like mp4upload, 4shared)
-      const dList = downloads[q] || [];
-      if (Array.isArray(dList)) {
-        for (let di = 0; di < dList.length; di++) {
-          const d = dList[di];
-          if (!d || !d.token) continue;
-          const rawLabel = (d.label || "Download").toString().trim();
-          if (!isPlayableServer(rawLabel)) continue;
-
-          const normLabel = rawLabel.toLowerCase();
-          if (!seenLabelsInQuality[normLabel]) {
-            seenLabelsInQuality[normLabel] = true;
-            qualityCandidates.push({
-              quality: q,
-              label: rawLabel,
-              token: d.token,
-              isDownload: true,
-              priority: getServerPriority(rawLabel),
-              rank: getServerPriority(rawLabel) + qualityOffset,
-            });
-          }
-        }
-      }
-
       // Sort candidates within this quality by server priority
       qualityCandidates.sort((a, b) => a.priority - b.priority);
 
-      // Keep up to 2 prioritized servers per quality to prevent rate-limiting while providing server choice
+      // Keep top 2 prioritized servers per quality to prevent gate rate-limiting
       const selectedForQuality = qualityCandidates.slice(0, 2);
       for (let ci = 0; ci < selectedForQuality.length; ci++) {
         candidates.push(selectedForQuality[ci]);
@@ -2223,8 +2191,13 @@ export default class extends Extension {
     for (let ci = 0; ci < candidates.length; ci++) {
       const item = candidates[ci];
 
-      // If this quality already has 2 working sources, skip further attempts for it
-      if ((qualityCounts[item.quality] || 0) >= 2) {
+      // Stop once we have 2 working streams across all qualities
+      if (sources.length >= 2) {
+        break;
+      }
+
+      // If this quality already has 1 working source, skip redundant servers of the same quality
+      if ((qualityCounts[item.quality] || 0) >= 1) {
         continue;
       }
 
@@ -2305,6 +2278,13 @@ export default class extends Extension {
             try {
               resObj = JSON.parse(resObj);
             } catch (_) {}
+          }
+
+          if (resObj && (resObj.statusCode === 429 || resObj.status === 429)) {
+            console.warn("[WitAnime] Gate returned HTTP 429 Rate Limit. Pausing...");
+            await new Promise((resolve) => setTimeout(resolve, 1500));
+            if (sources.length > 0) break;
+            continue;
           }
 
           if (resObj && typeof resObj === "object") {
@@ -2406,8 +2386,8 @@ export default class extends Extension {
           console.log("[WitAnime] Successfully added playable stream: " + sourceObj.server + " -> " + sourceObj.url);
         }
 
-        // Short throttle pause between candidate attempts
-        await new Promise((resolve) => setTimeout(resolve, 150));
+        // Throttle pause between candidate attempts to protect gate session from rate limits
+        await new Promise((resolve) => setTimeout(resolve, 800));
       } catch (e) {
         console.warn("[WitAnime] Exception evaluating candidate " + item.label + ": " + e);
         continue;
