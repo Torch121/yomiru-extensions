@@ -15,21 +15,6 @@
     "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/anikoto.js"
   },
   {
-    "package": "site.anime4up",
-    "name": "Anime4up",
-    "version": "v1.0.1",
-    "author": "Yomiru",
-    "lang": "ar",
-    "license": "MIT",
-    "type": "bangumi",
-    "webSite": "https://w1.anime4up.rest",
-    "nsfw": false,
-    "icon": "https://w1.anime4up.rest/wp-content/uploads/2019/03/Anime4up-Icon-1.png",
-    "description": "مشاهدة وتحميل أفضل مسلسلات وأفلام الأنمي المترجمة أون لاين بجودة عالية عبر Anime4up",
-    "filename": "anime4up.js",
-    "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/anime4up.js"
-  },
-  {
     "package": "animegg.org",
     "name": "AnimeGG",
     "version": "v0.1.0",
@@ -388,5 +373,20 @@
     "description": "Anime torrent indexer providing high-speed BitTorrent and Magnet streams from TsukiHime (tsukihime.org).",
     "filename": "tsukihime.js",
     "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/tsukihime.js"
+  },
+  {
+    "package": "site.witanime",
+    "name": "WitAnime",
+    "version": "v1.1.2",
+    "author": "Yomiru",
+    "lang": "ar",
+    "license": "MIT",
+    "type": "bangumi",
+    "webSite": "https://witanime.site",
+    "nsfw": false,
+    "icon": "https://witanime.site/apple-touch-icon.png",
+    "description": "مشاهدة وتحميل أفضل مسلسلات وأفلام الأنمي المترجمة أون لاين بجودة عالية عبر WitAnime",
+    "filename": "witanime.js",
+    "scriptUrl": "https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/extensions/witanime.js"
   }
 ]

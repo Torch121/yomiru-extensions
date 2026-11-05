@@ -2,7 +2,7 @@
 
 Official remote extension catalog for [Yomiru](https://github.com/Torch121/Yomiru).
 
-> **Last Synced**: 2026-10-29 19:58 UTC  
+> **Last Synced**: 2026-11-05 12:49 UTC  
 > **Repository**: `Torch121/yomiru-extensions` (branch: `main`)  
 > **Manifest URL**: `https://raw.githubusercontent.com/Torch121/yomiru-extensions/main/index.json`
 
@@ -11,7 +11,6 @@ Official remote extension catalog for [Yomiru](https://github.com/Torch121/Yomir
 | Icon | Extension | Package | Version | Type | Lang | Author | Source |
 | :---: | :--- | :--- | :---: | :---: | :---: | :--- | :---: |
 | <img src="https://anikototv.to/AnikotoTheme/assets/images/favicon.png" width="28" height="28" /> | **Anikoto** | `to.anikototv` | `v1.0.0` | `bangumi` | EN | Yomiru | [anikoto.js](./extensions/anikoto.js) |
-| <img src="https://w1.anime4up.rest/wp-content/uploads/2019/03/Anime4up-Icon-1.png" width="28" height="28" /> | **Anime4up** | `site.anime4up` | `v1.0.1` | `bangumi` | AR | Yomiru | [anime4up.js](./extensions/anime4up.js) |
 | <img src="https://www.animegg.org/images/anime.png" width="28" height="28" /> | **AnimeGG** | `animegg.org` | `v0.1.0` | `bangumi` | EN | Yomiru | [animegg.js](./extensions/animegg.js) |
 | <img src="https://www.animeonsen.xyz/assets/icons/icon-192x192.png" width="28" height="28" /> | **AnimeOnsen** | `xyz.animeonsen` | `v1.0.0` | `bangumi` | ALL | Yomiru | [animeonsen.js](./extensions/animeonsen.js) |
 | <img src="https://ani.pm/icon.png" width="28" height="28" /> | **Ani.pm** | `pm.ani` | `v1.0.0` | `bangumi` | ALL | Yomiru | [anipm.js](./extensions/anipm.js) |
@@ -36,6 +35,7 @@ Official remote extension catalog for [Yomiru](https://github.com/Torch121/Yomir
 | <img src="https://nyaa.si/static/favicon.png" width="28" height="28" /> | **Nyaa** | `si.nyaa` | `v1.0.2` | `bangumi` | ALL | Yomiru | [nyaa.js](./extensions/nyaa.js) |
 | <img src="https://senshi.to/favicon.ico" width="28" height="28" /> | **Senshi** | `to.senshi` | `v1.0.1` | `bangumi` | EN | Yomiru | [senshi.js](./extensions/senshi.js) |
 | <img src="https://tsukihime.org/favicon.ico" width="28" height="28" /> | **TsukiHime** | `org.tsukihime` | `v1.0.0` | `bangumi` | ALL | Yomiru | [tsukihime.js](./extensions/tsukihime.js) |
+| <img src="https://witanime.site/apple-touch-icon.png" width="28" height="28" /> | **WitAnime** | `site.witanime` | `v1.1.2` | `bangumi` | AR | Yomiru | [witanime.js](./extensions/witanime.js) |
 
 ## How to Use in Yomiru
 1. Open **Yomiru** on your device.
