@@ -1,6 +1,6 @@
 // ==YomiruExtension==
 // @name         WitAnime
-// @version      v1.1.5
+// @version      v1.1.6
 // @author       Yomiru
 // @lang         ar
 // @license      MIT
@@ -1017,12 +1017,13 @@ export default class extends Extension {
       if (!videoId) return null;
 
       const xmlUrl =
-        "https://videa.hu/player/xml?v=" +
+        "https://videa.hu/player/xml?platform=desktop&v=" +
         videoId +
-        "&_s=" +
+        "&lang=hu&_s=" +
         randomSeed +
         "&_t=" +
-        result.substring(0, 16);
+        result.substring(0, 16) +
+        "&start=0";
 
       const xmlResp = await this.request(xmlUrl, {
         fullResponse: true,
@@ -1124,7 +1125,8 @@ export default class extends Extension {
           followRedirects: false,
           fullResponse: true,
           headers: {
-            Referer: embedUrl || "https://videa.hu/",
+            Referer: "https://videa.hu/",
+            Origin: "https://videa.hu",
             "User-Agent": DEFAULT_USER_AGENT,
           },
         });
@@ -1148,7 +1150,8 @@ export default class extends Extension {
         type: "mp4",
         isDirectVideo: true,
         headers: {
-          Referer: embedUrl || "https://videa.hu/",
+          Referer: "https://videa.hu/",
+          Origin: "https://videa.hu",
           "User-Agent":
             DEFAULT_USER_AGENT,
         },
