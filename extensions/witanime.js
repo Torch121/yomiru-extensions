@@ -1,6 +1,6 @@
 // ==YomiruExtension==
 // @name         WitAnime
-// @version      v1.1.4
+// @version      v1.1.5
 // @author       Yomiru
 // @lang         ar
 // @license      MIT
@@ -42,6 +42,17 @@ export default class extends Extension {
       /<h1[^>]*>[^<]*(?:429|Too Many Requests)/i.test(html) ||
       html.indexOf("Too Many Requests") !== -1 ||
       html.indexOf("طلبات كثيرة") !== -1
+    );
+  }
+
+  isCsrfExpired(html) {
+    if (!html || typeof html !== "string") return false;
+    if (html.length > 5000) return false;
+    return (
+      html.indexOf("419") !== -1 ||
+      html.indexOf("Page Expired") !== -1 ||
+      html.indexOf("CSRF token mismatch") !== -1 ||
+      /<title>[^<]*(?:419|Page Expired|انتهت صلاحية الجلسة)/i.test(html)
     );
   }
 
@@ -2000,9 +2011,15 @@ export default class extends Extension {
 
     console.log("[WitAnime] Starting watch for episode URL: " + watchUrl);
 
+    let animeReferer = this.baseUrl + "/";
+    const slugMatch = watchUrl.match(/\/watch\/([^/]+)/);
+    if (slugMatch && slugMatch[1]) {
+      animeReferer = this.baseUrl + "/anime/" + slugMatch[1];
+    }
+
     const res = await this.request(watchUrl, {
       headers: {
-        Referer: this.baseUrl + "/",
+        Referer: animeReferer,
         "User-Agent":
           DEFAULT_USER_AGENT,
       },
@@ -2034,9 +2051,9 @@ export default class extends Extension {
     }
 
     // 1. Extract CSRF token
-    let csrfMatch = html.match(
-      /<meta\s+name=["']csrf-token["']\s+content=["']([^"']+)["']/i
-    );
+    let csrfMatch =
+      html.match(/<meta\s+name=["']csrf-token["']\s+content=["']([^"']+)["']/i) ||
+      html.match(/data-csrf=["']([^"']+)["']/i);
     let csrfToken = csrfMatch ? csrfMatch[1] : "";
 
     if (!csrfToken) {
@@ -2051,9 +2068,9 @@ export default class extends Extension {
             : homeRes && homeRes.body
             ? homeRes.body
             : JSON.stringify(homeRes);
-        csrfMatch = homeHtml.match(
-          /<meta\s+name=["']csrf-token["']\s+content=["']([^"']+)["']/i
-        );
+        csrfMatch =
+          homeHtml.match(/<meta\s+name=["']csrf-token["']\s+content=["']([^"']+)["']/i) ||
+          homeHtml.match(/data-csrf=["']([^"']+)["']/i);
         csrfToken = csrfMatch ? csrfMatch[1] : "";
       } catch (err) {
         console.warn("[WitAnime] Homepage CSRF fallback error: " + err);
@@ -2097,6 +2114,13 @@ export default class extends Extension {
           sources: [],
           error:
             "WitAnime server is temporarily rate-limiting requests (HTTP 429). Please wait 1-2 minutes and try again.",
+        };
+      }
+      if (this.isCsrfExpired(manifest)) {
+        console.warn("[WitAnime] Manifest POST returned HTTP 419 (CSRF Expired)");
+        return {
+          sources: [],
+          error: "Session expired on WitAnime (HTTP 419). Please refresh and try again.",
         };
       }
       try {
@@ -2164,11 +2188,11 @@ export default class extends Extension {
     };
 
     const candidates = [];
-    const qualitiesToInspect = ["FHD", "HD", "SD"];
+    const qualitiesToInspect = ["4K", "FHD", "HD", "SD"];
 
     for (let qi = 0; qi < qualitiesToInspect.length; qi++) {
       const q = qualitiesToInspect[qi];
-      const qualityOffset = q === "FHD" ? 0 : q === "HD" ? 100 : 200;
+      const qualityOffset = q === "4K" ? -50 : q === "FHD" ? 0 : q === "HD" ? 100 : 200;
       const seenLabelsInQuality = {};
 
       // 1. Collect playable servers from players[q] (players are direct video stream embeds)
@@ -2181,12 +2205,19 @@ export default class extends Extension {
           const rawLabel = (s.label || "Server").toString().trim();
           if (!isPlayableServer(rawLabel)) continue;
 
-          const normLabel = rawLabel.toLowerCase();
-          if (!seenLabelsInQuality[normLabel]) {
-            seenLabelsInQuality[normLabel] = true;
+          const isDub = (s.version || "") === "dub";
+          const versionTag = isDub ? " [مدبلج]" : "";
+          const displayLabel = rawLabel + versionTag;
+          const normKey = displayLabel.toLowerCase();
+
+          if (!seenLabelsInQuality[normKey]) {
+            seenLabelsInQuality[normKey] = true;
             qualityCandidates.push({
               quality: q,
-              label: rawLabel,
+              label: displayLabel,
+              rawLabel: rawLabel,
+              version: s.version || "sub",
+              lang: s.lang || "jp",
               token: s.token,
               isDownload: false,
               priority: getServerPriority(rawLabel),
@@ -2204,16 +2235,26 @@ export default class extends Extension {
           if (!d || !d.token) continue;
           const rawLabel = (d.label || "Download").toString().trim();
           const normLabel = rawLabel.toLowerCase();
-          if (normLabel.indexOf("mp4upload") !== -1 && !seenLabelsInQuality[normLabel]) {
-            seenLabelsInQuality[normLabel] = true;
-            qualityCandidates.push({
-              quality: q,
-              label: rawLabel,
-              token: d.token,
-              isDownload: true,
-              priority: getServerPriority(rawLabel),
-              rank: getServerPriority(rawLabel) + qualityOffset,
-            });
+          if (normLabel.indexOf("mp4upload") !== -1) {
+            const isDub = (d.version || "") === "dub";
+            const versionTag = isDub ? " [مدبلج]" : "";
+            const displayLabel = rawLabel + versionTag;
+            const normKey = displayLabel.toLowerCase();
+
+            if (!seenLabelsInQuality[normKey]) {
+              seenLabelsInQuality[normKey] = true;
+              qualityCandidates.push({
+                quality: q,
+                label: displayLabel,
+                rawLabel: rawLabel,
+                version: d.version || "sub",
+                lang: d.lang || "jp",
+                token: d.token,
+                isDownload: true,
+                priority: getServerPriority(rawLabel),
+                rank: getServerPriority(rawLabel) + qualityOffset,
+              });
+            }
           }
         }
       }
@@ -2239,7 +2280,7 @@ export default class extends Extension {
 
     const sources = [];
     const seenStreamUrls = {};
-    const qualityCounts = { FHD: 0, HD: 0, SD: 0 };
+    const qualityCounts = { "4K": 0, FHD: 0, HD: 0, SD: 0 };
 
     for (let ci = 0; ci < candidates.length; ci++) {
       const item = candidates[ci];
@@ -2425,7 +2466,7 @@ export default class extends Extension {
             direct.type === "hls" || direct.url.indexOf(".m3u8") !== -1;
           const sourceObj = {
             server:
-              cleanLabel.toUpperCase() +
+              (item.label || cleanLabel) +
               " (" +
               item.quality +
               ")",
