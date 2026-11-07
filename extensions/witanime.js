@@ -1,6 +1,6 @@
 // ==YomiruExtension==
 // @name         WitAnime
-// @version      v1.1.6
+// @version      v1.1.7
 // @author       Yomiru
 // @lang         ar
 // @license      MIT
@@ -2063,7 +2063,10 @@ export default class extends Extension {
       console.log("[WitAnime] CSRF token not found in watch page, requesting homepage fallback...");
       try {
         const homeRes = await this.request(this.baseUrl, {
-          headers: { Referer: this.baseUrl + "/" },
+          headers: {
+            Referer: this.baseUrl + "/",
+            "User-Agent": DEFAULT_USER_AGENT,
+          },
         });
         const homeHtml =
           typeof homeRes === "string"
@@ -2102,11 +2105,7 @@ export default class extends Extension {
         Accept: "application/json",
         "X-CSRF-TOKEN": csrfToken,
         Referer: watchUrl,
-        "X-Requested-With": "XMLHttpRequest",
         "User-Agent": DEFAULT_USER_AGENT,
-        "Sec-Fetch-Mode": "same-origin",
-        "Sec-Fetch-Site": "same-origin",
-        "Sec-Fetch-Dest": "empty",
       },
     });
 
@@ -2315,11 +2314,7 @@ export default class extends Extension {
           Accept: "application/json",
           "X-CSRF-TOKEN": csrfToken,
           Referer: watchUrl,
-          "X-Requested-With": "XMLHttpRequest",
           "User-Agent": DEFAULT_USER_AGENT,
-          "Sec-Fetch-Mode": "same-origin",
-          "Sec-Fetch-Site": "same-origin",
-          "Sec-Fetch-Dest": "empty",
         };
 
         // 1. Authorize token via POST stream-source or download-source
@@ -2353,10 +2348,6 @@ export default class extends Extension {
         try {
           const gateHeaders = {
             "User-Agent": DEFAULT_USER_AGENT,
-            "Upgrade-Insecure-Requests": "1",
-            "Sec-Fetch-Dest": "iframe",
-            "Sec-Fetch-Mode": "navigate",
-            "Sec-Fetch-Site": "same-origin",
           };
           if (item.isDownload) {
             gateHeaders["Referer"] = watchUrl;
